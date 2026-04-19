@@ -57,20 +57,23 @@ export default function DashboardPage() {
   async function createHotel(e: React.FormEvent) {
     e.preventDefault()
     setCreating(true)
+    setError(null)
     try {
       const res = await fetch('/api/auth/setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hotelName: hotelName.trim() || 'Meu Hotel' }),
       })
+      const json = await res.json().catch(() => ({}))
       if (res.ok) {
         setNoHotel(false)
         setLoading(true)
         load()
       } else {
-        const err = await res.json().catch(() => ({}))
-        setError(err.error || 'Erro ao criar hotel')
+        setError(json.error || `Erro ${res.status} ao criar hotel`)
       }
+    } catch (err) {
+      setError('Erro de conexão. Tente novamente.')
     } finally {
       setCreating(false)
     }
@@ -93,6 +96,9 @@ export default function DashboardPage() {
         .single()
 
       if (!profile?.hotel_id) {
+        // Pre-fill from user metadata (full_name set during signup)
+        const fullName = user.user_metadata?.full_name || ''
+        if (fullName) setHotelName(fullName)
         setNoHotel(true)
         setLoading(false)
         return
@@ -181,6 +187,9 @@ export default function DashboardPage() {
             className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
             required
           />
+          {error && (
+            <p className="text-xs text-red-500 text-center">{error}</p>
+          )}
           <button
             type="submit"
             disabled={creating}
