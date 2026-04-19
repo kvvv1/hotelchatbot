@@ -108,7 +108,16 @@ export default function AtendimentoPage() {
 
           {/* LeadContextPanel */}
           <div className={`${mobileView === 'context' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-72 shrink-0`}>
-            <LeadContextPanel lead={selectedLead} onBack={() => setMobileView('chat')} />
+            <LeadContextPanel
+              lead={selectedLead}
+              onBack={() => setMobileView('chat')}
+              onClose={async () => {
+                await fetchLeads()
+                setSelectedLead(null)
+                setMobileView('inbox')
+              }}
+              onLeadUpdated={(updated) => setSelectedLead(updated)}
+            />
           </div>
         </>
       ) : (

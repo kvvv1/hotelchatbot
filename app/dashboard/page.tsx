@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { MessageSquare, CheckCircle, Clock, TrendingUp, Bot, User } from 'lucide-react'
+import { MessageSquare, CheckCircle, Clock, TrendingUp, Bot, User, AlertTriangle, Columns, ArrowRight } from 'lucide-react'
 import type { Lead } from '@/lib/types/database'
 
 interface Metrics {
@@ -47,6 +48,7 @@ function SkeletonCard() {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -203,14 +205,60 @@ export default function DashboardPage() {
     )
   }
 
+  const staleLeads = leads.filter(l =>
+    l.last_message_at &&
+    Date.now() - new Date(l.last_message_at).getTime() > 24 * 60 * 60 * 1000 &&
+    l.status !== 'closed'
+  )
+
   return (
     <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
-      <div>
-        <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Visão Geral</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Métricas de atendimento e conversão</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Visão Geral</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Métricas de atendimento e conversão</p>
+        </div>
       </div>
 
-      {/* Métricas */}
+      {/* Atalhos rápidos */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => router.push('/dashboard/atendimento')}
+          className="flex items-center justify-between gap-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl p-4 transition-colors text-left"
+        >
+          <div>
+            <p className="font-semibold text-sm">Atendimento</p>
+            <p className="text-xs text-violet-200 mt-0.5">Ver conversas ativas</p>
+          </div>
+          <ArrowRight className="w-4 h-4 flex-shrink-0" />
+        </button>
+        <button
+          onClick={() => router.push('/dashboard/leads')}
+          className="flex items-center justify-between gap-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-900 rounded-xl p-4 shadow-sm transition-colors text-left"
+        >
+          <div>
+            <p className="font-semibold text-sm">Kanban</p>
+            <p className="text-xs text-gray-500 mt-0.5">Pipeline de leads</p>
+          </div>
+          <Columns className="w-4 h-4 flex-shrink-0 text-gray-400" />
+        </button>
+      </div>
+
+      {/* Alerta leads parados */}
+      {staleLeads.length > 0 && (
+        <div
+          onClick={() => router.push('/dashboard/atendimento')}
+          className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 cursor-pointer hover:bg-amber-100 transition-colors"
+        >
+          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <p className="text-sm text-amber-800 font-medium">
+            {staleLeads.length} lead{staleLeads.length > 1 ? 's' : ''} sem resposta há mais de 24h
+          </p>
+          <ArrowRight className="w-4 h-4 text-amber-500 ml-auto flex-shrink-0" />
+        </div>
+      )}
+
+      {/* Métricas */
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <MetricCard label="Total de leads" value={metrics.total} icon={MessageSquare} color="bg-violet-500" />
         <MetricCard label="Reservas" value={metrics.booked} icon={CheckCircle} color="bg-green-500" />
@@ -258,7 +306,11 @@ export default function DashboardPage() {
             </div>
           )}
           {recentLeads.map(lead => (
-            <div key={lead.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-2">
+            <button
+              key={lead.id}
+              onClick={() => router.push(`/dashboard/atendimento?lead=${lead.id}`)}
+              className="w-full px-4 sm:px-5 py-3 flex items-center justify-between gap-2 hover:bg-gray-50 transition-colors text-left"
+            >
               <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{lead.guest_name || lead.guest_phone}</p>
                 <p className="text-xs text-gray-400 truncate">{lead.guest_phone}</p>
@@ -275,8 +327,9 @@ export default function DashboardPage() {
                 }`}>
                   {lead.stage.replace(/_/g, ' ')}
                 </span>
+                <ArrowRight className="w-3.5 h-3.5 text-gray-300" />
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

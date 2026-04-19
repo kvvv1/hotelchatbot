@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { BedDouble, MessageSquare, LayoutGrid, Sparkles } from 'lucide-react'
+import { BedDouble, MessageSquare, LayoutGrid, Sparkles, Eye, EyeOff } from 'lucide-react'
 
 type Mode = 'login' | 'signup'
 type View = 'login' | 'forgot' | 'forgot-sent'
@@ -27,6 +27,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [showLoginPwd, setShowLoginPwd] = useState(false)
+  const [showSignupPwd, setShowSignupPwd] = useState(false)
+  const [showSignupConfirm, setShowSignupConfirm] = useState(false)
+  const [pwdMismatch, setPwdMismatch] = useState(false)
 
   function switchMode(next: Mode) {
     if (next === mode) return
@@ -73,6 +77,7 @@ export default function LoginPage() {
     setError(null)
     setNotice(null)
     if (signupPassword !== signupConfirm) {
+      setPwdMismatch(true)
       setError('As senhas não coincidem.')
       return
     }
@@ -227,10 +232,16 @@ export default function LoginPage() {
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-neutral-900" htmlFor="password">Senha</label>
-                        <input id="password" type="password" autoComplete="current-password" required value={password}
-                          onChange={e => setPassword(e.target.value)}
-                          className="w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200"
-                          placeholder="••••••••" />
+                        <div className="relative">
+                          <input id="password" type={showLoginPwd ? 'text' : 'password'} autoComplete="current-password" required value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            className="w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 pr-11 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200"
+                            placeholder="••••••••" />
+                          <button type="button" onClick={() => setShowLoginPwd(v => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
+                            {showLoginPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
                         <div className="flex justify-end">
                           <button type="button" onClick={() => { setForgotEmail(email); setView('forgot'); setError(null) }}
                             className="text-xs font-medium text-neutral-600 underline-offset-4 hover:text-neutral-900 hover:underline">
@@ -267,17 +278,30 @@ export default function LoginPage() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-neutral-900" htmlFor="signup-password">Senha</label>
-                      <input id="signup-password" type="password" autoComplete="new-password" required value={signupPassword}
-                        onChange={e => setSignupPassword(e.target.value)}
-                        className="w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200"
-                        placeholder="Mínimo 6 caracteres" />
+                      <div className="relative">
+                        <input id="signup-password" type={showSignupPwd ? 'text' : 'password'} autoComplete="new-password" required value={signupPassword}
+                          onChange={e => setSignupPassword(e.target.value)}
+                          className="w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 pr-11 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200"
+                          placeholder="Mínimo 6 caracteres" />
+                        <button type="button" onClick={() => setShowSignupPwd(v => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
+                          {showSignupPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-neutral-900" htmlFor="signup-confirm">Confirmar senha</label>
-                      <input id="signup-confirm" type="password" autoComplete="new-password" required value={signupConfirm}
-                        onChange={e => setSignupConfirm(e.target.value)}
-                        className="w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200"
-                        placeholder="Repita a senha" />
+                      <div className="relative">
+                        <input id="signup-confirm" type={showSignupConfirm ? 'text' : 'password'} autoComplete="new-password" required value={signupConfirm}
+                          onChange={e => { setSignupConfirm(e.target.value); setPwdMismatch(false) }}
+                          className={`w-full rounded-xl border bg-white/90 px-4 py-3 pr-11 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200 ${pwdMismatch ? 'border-red-400 ring-red-200' : 'border-neutral-200'}`}
+                          placeholder="Repita a senha" />
+                        <button type="button" onClick={() => setShowSignupConfirm(v => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
+                          {showSignupConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      {pwdMismatch && <p className="text-xs text-red-600 mt-1">As senhas não coincidem</p>}
                     </div>
                     {error && <p className="auth-fade-up rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
                     {notice && <p className="auth-fade-up rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{notice}</p>}

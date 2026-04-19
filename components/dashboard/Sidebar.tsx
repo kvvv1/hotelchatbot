@@ -2,14 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessageSquare, Columns, BarChart2, Settings, LogOut, Hotel, Menu, X } from 'lucide-react'
+import { MessageSquare, Columns, BarChart2, Settings, LogOut, Hotel, Menu, X, Bell } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 const NAV_ITEMS = [
   { href: '/dashboard/atendimento', label: 'Atendimento', icon: MessageSquare },
   { href: '/dashboard/leads', label: 'Leads (Kanban)', icon: Columns },
   { href: '/dashboard', label: 'Métricas', icon: BarChart2, exact: true },
+  { href: '/dashboard/notificacoes', label: 'Notificações', icon: Bell },
   { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
@@ -23,6 +25,20 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    async function fetchUnread() {
+      try {
+        const res = await fetch('/api/notifications')
+        const json = await res.json()
+        if (json.data) setUnreadCount(json.data.filter((n: { read: boolean }) => !n.read).length)
+      } catch {}
+    }
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   async function handleLogout() {
     const supabase = createClient()
@@ -76,6 +92,11 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
               <span className={`whitespace-nowrap ${collapsed ? 'md:hidden' : ''}`}>{label}</span>
+              {href === '/dashboard/notificacoes' && unreadCount > 0 && (
+                <span className={`ml-auto flex-shrink-0 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold bg-red-500 text-white ${collapsed ? 'md:hidden' : ''}`}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </Link>
           )
         })}
