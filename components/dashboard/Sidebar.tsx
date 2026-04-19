@@ -2,18 +2,27 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessageSquare, Columns, BarChart2, Settings, LogOut, Hotel, Menu, X, Bell } from 'lucide-react'
+import { MessageSquare, Columns, BarChart2, Settings, LogOut, Hotel, Menu, X, Bell, CheckCheck, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 const NAV_ITEMS = [
   { href: '/dashboard/atendimento', label: 'Atendimento', icon: MessageSquare },
   { href: '/dashboard/leads', label: 'Leads (Kanban)', icon: Columns },
   { href: '/dashboard', label: 'Métricas', icon: BarChart2, exact: true },
-  { href: '/dashboard/notificacoes', label: 'Notificações', icon: Bell },
   { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings },
 ]
+
+interface Notification {
+  id: string
+  type: string
+  title: string
+  body: string | null
+  lead_id: string | null
+  read: boolean
+  created_at: string
+}
 
 interface SidebarProps {
   collapsed: boolean
@@ -26,19 +35,52 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const pathname = usePathname()
   const router = useRouter()
   const [unreadCount, setUnreadCount] = useState(0)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [showNotifs, setShowNotifs] = useState(false)
+  const [markingRead, setMarkingRead] = useState(false)
+  const bellRef = useRef<HTMLDivElement>(null)
+
+  async function fetchNotifications() {
+    try {
+      const res = await fetch('/api/notifications')
+      const json = await res.json()
+      if (json.data) {
+        setNotifications(json.data)
+        setUnreadCount(json.data.filter((n: Notification) => !n.read).length)
+      }
+    } catch {}
+  }
 
   useEffect(() => {
-    async function fetchUnread() {
-      try {
-        const res = await fetch('/api/notifications')
-        const json = await res.json()
-        if (json.data) setUnreadCount(json.data.filter((n: { read: boolean }) => !n.read).length)
-      } catch {}
-    }
-    fetchUnread()
-    const interval = setInterval(fetchUnread, 30000)
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 30000)
     return () => clearInterval(interval)
   }, [])
+
+  // Close modal when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
+        setShowNotifs(false)
+      }
+    }
+    if (showNotifs) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showNotifs])
+
+  async function markAllRead() {
+    const ids = notifications.filter(n => !n.read).map(n => n.id)
+    if (!ids.length) return
+    setMarkingRead(true)
+    await fetch('/api/notifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    })
+    setMarkingRead(false)
+    setUnreadCount(0)
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+  }
 
   async function handleLogout() {
     const supabase = createClient()
@@ -92,18 +134,90 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
               <span className={`whitespace-nowrap ${collapsed ? 'md:hidden' : ''}`}>{label}</span>
-              {href === '/dashboard/notificacoes' && unreadCount > 0 && (
-                <span className={`ml-auto flex-shrink-0 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold bg-red-500 text-white ${collapsed ? 'md:hidden' : ''}`}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
             </Link>
           )
         })}
       </nav>
 
-      {/* Bottom: Logout + Desktop hamburger */}
+      {/* Bottom: Bell + Logout + Desktop hamburger */}
       <div className="px-2 pb-4 border-t border-slate-700 pt-3 space-y-1">
+
+        {/* Bell notifications button + popover */}
+        <div ref={bellRef} className="relative">
+          <button
+            onClick={() => setShowNotifs(v => !v)}
+            title="Notificações"
+            className={[
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full transition-colors',
+              showNotifs ? 'bg-slate-700 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white',
+              collapsed ? 'md:justify-center md:px-2' : '',
+            ].join(' ')}
+          >
+            <div className="relative flex-shrink-0">
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full text-[9px] font-bold bg-red-500 text-white px-0.5">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </div>
+            <span className={`whitespace-nowrap ${collapsed ? 'md:hidden' : ''}`}>Notificações</span>
+          </button>
+
+          {/* Popover */}
+          {showNotifs && (
+            <div className="absolute bottom-full left-0 mb-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <p className="text-sm font-semibold text-gray-900">Notificações</p>
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllRead}
+                      disabled={markingRead}
+                      className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-800 font-medium disabled:opacity-50"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5" />
+                      Marcar lidas
+                    </button>
+                  )}
+                  <button onClick={() => setShowNotifs(false)} className="text-gray-400 hover:text-gray-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-72 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-gray-400 gap-2">
+                    <Bell className="w-6 h-6 opacity-30" />
+                    <p className="text-xs">Sem notificações</p>
+                  </div>
+                ) : (
+                  notifications.map(n => (
+                    <button
+                      key={n.id}
+                      onClick={() => {
+                        setShowNotifs(false)
+                        if (n.lead_id) router.push(`/dashboard/atendimento?lead=${n.lead_id}`)
+                      }}
+                      className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!n.read ? 'bg-violet-50' : ''}`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <Info className={`w-4 h-4 mt-0.5 flex-shrink-0 ${!n.read ? 'text-violet-500' : 'text-gray-400'}`} />
+                        <div className="min-w-0">
+                          <p className={`text-xs font-medium truncate ${!n.read ? 'text-gray-900' : 'text-gray-600'}`}>{n.title}</p>
+                          {n.body && <p className="text-[11px] text-gray-500 truncate mt-0.5">{n.body}</p>}
+                        </div>
+                        {!n.read && <span className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-violet-500 mt-1.5" />}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <button
           onClick={handleLogout}
           title={collapsed ? 'Sair' : undefined}
