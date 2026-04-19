@@ -111,7 +111,6 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
     </aside>
   )
 }
-  { href: '/dashboard/atendimento', label: 'Atendimento', icon: MessageSquare },
   { href: '/dashboard/leads', label: 'Leads (Kanban)', icon: Columns },
   { href: '/dashboard', label: 'Métricas', icon: BarChart2, exact: true },
   { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings },

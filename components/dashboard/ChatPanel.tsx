@@ -150,14 +150,6 @@ export function ChatPanel({ lead, messages, onTakeover, onMessageSent, onBack, o
   )
 }
 
-
-interface ChatPanelProps {
-  lead: Lead
-  messages: Message[]
-  onTakeover: (action: 'take' | 'release') => Promise<void>
-  onMessageSent: () => void
-}
-
 const SENDER_LABELS: Record<string, string> = {
   guest: 'Hóspede',
   bot: 'IA',
