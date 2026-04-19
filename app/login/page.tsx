@@ -117,16 +117,16 @@ export default function LoginPage() {
   const isLogin = mode === 'login'
 
   return (
-    <div className="relative min-h-screen overflow-y-auto lg:h-screen lg:overflow-hidden bg-gradient-to-br from-violet-50 via-white to-purple-50">
-      {/* Background blobs */}
-      <div className="pointer-events-none absolute -left-24 -top-24 size-64 sm:size-80 rounded-full bg-violet-200/45 blur-3xl float-slow" />
-      <div className="pointer-events-none absolute -bottom-32 -right-32 size-72 sm:size-96 rounded-full bg-purple-200/35 blur-3xl float" />
+    <div className="relative min-h-[100dvh] overflow-x-hidden overflow-y-auto lg:h-screen lg:overflow-hidden bg-gradient-to-br from-violet-50 via-white to-purple-50">
+      {/* Background blobs — kept inside overflow-x-hidden so they don't shift the layout */}
+      <div className="pointer-events-none absolute left-0 -top-16 size-64 sm:size-80 rounded-full bg-violet-200/45 blur-3xl float-slow -translate-x-1/2" />
+      <div className="pointer-events-none absolute right-0 bottom-0 size-72 sm:size-96 rounded-full bg-purple-200/35 blur-3xl float translate-x-1/3 translate-y-1/3" />
       <div className="pointer-events-none absolute left-1/2 top-8 size-48 -translate-x-1/2 rounded-full bg-violet-200/25 blur-3xl float-fast" />
 
       {/* Grid overlay */}
       <div className="pointer-events-none absolute inset-0 auth-grid" aria-hidden />
 
-      <main className="mx-auto flex min-h-screen w-full max-w-7xl items-center px-2 py-4 sm:px-3 sm:py-6 lg:h-screen lg:px-4 lg:py-4">
+      <main className="mx-auto flex min-h-[100dvh] w-full max-w-7xl items-center px-4 py-6 sm:px-6 sm:py-8 lg:h-screen lg:px-4 lg:py-4" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
         <div className="grid w-full items-center gap-4 sm:gap-6 lg:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)] lg:gap-6 lg:h-full">
 
           {/* ── Left: Form ── */}
