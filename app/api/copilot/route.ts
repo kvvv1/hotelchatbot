@@ -72,7 +72,17 @@ SUAS CAPACIDADES:
 - Ajudar a configurar e otimizar o agente IA
 - Recomendar ações concretas baseadas nos dados
 
-Seja direto, analítico e orientado a resultados. Use os dados disponíveis para embasar suas respostas.
+REGRAS DE FORMATAÇÃO (OBRIGATÓRIO):
+- NUNCA use ### ou ## ou # para títulos
+- NUNCA use * ou _ solto para itálico
+- Use **texto** apenas para destacar palavras ou números importantes (negrito)
+- Use - para listas com marcadores
+- Use 1. 2. 3. para listas numeradas
+- Separe seções com uma linha em branco
+- Seja direto e objetivo — máximo 300 palavras por resposta
+- Quando citar dados numéricos, destaque-os em **negrito**
+- Termine sempre com uma ação concreta sugerida ao gestor
+
 Data/hora atual: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
 
     const chatMessages: ChatCompletionMessageParam[] = [

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Bot, User, Loader2, Sparkles, TrendingUp, Users, AlertTriangle, BarChart2 } from 'lucide-react'
 
 interface Message {
@@ -63,12 +63,74 @@ export default function CopilotPage() {
   }
 
   function formatMessage(content: string) {
-    return content.split('\n').map((line, i) => (
-      <span key={i}>
-        {line}
-        {i < content.split('\n').length - 1 && <br />}
-      </span>
-    ))
+    const lines = content.split('\n')
+    const elements: React.ReactNode[] = []
+    let i = 0
+
+    function renderInline(text: string): React.ReactNode[] {
+      const parts = text.split(/(\*\*[^*]+\*\*)/g)
+      return parts.map((part, idx) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={idx} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>
+        }
+        return part
+      })
+    }
+
+    while (i < lines.length) {
+      const line = lines[i]
+      // Bullet list
+      if (/^[-•]\s/.test(line)) {
+        const items: string[] = []
+        while (i < lines.length && /^[-•]\s/.test(lines[i])) {
+          items.push(lines[i].replace(/^[-•]\s/, ''))
+          i++
+        }
+        elements.push(
+          <ul key={`ul-${i}`} className="space-y-1 my-1">
+            {items.map((item, idx) => (
+              <li key={idx} className="flex gap-2">
+                <span className="text-violet-400 mt-0.5 flex-shrink-0">•</span>
+                <span>{renderInline(item)}</span>
+              </li>
+            ))}
+          </ul>
+        )
+        continue
+      }
+      // Numbered list
+      if (/^\d+\.\s/.test(line)) {
+        const items: string[] = []
+        while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+          items.push(lines[i].replace(/^\d+\.\s/, ''))
+          i++
+        }
+        elements.push(
+          <ol key={`ol-${i}`} className="space-y-1 my-1 list-none">
+            {items.map((item, idx) => (
+              <li key={idx} className="flex gap-2">
+                <span className="text-violet-500 font-semibold flex-shrink-0 w-4">{idx + 1}.</span>
+                <span>{renderInline(item)}</span>
+              </li>
+            ))}
+          </ol>
+        )
+        continue
+      }
+      // Empty line → spacer
+      if (line.trim() === '') {
+        elements.push(<div key={`sp-${i}`} className="h-2" />)
+        i++
+        continue
+      }
+      // Regular paragraph
+      elements.push(
+        <p key={`p-${i}`} className="leading-relaxed">{renderInline(line)}</p>
+      )
+      i++
+    }
+
+    return elements
   }
 
   return (
