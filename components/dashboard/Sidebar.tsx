@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessageSquare, Columns, BarChart2, Settings, LogOut, Hotel, Menu, X, Bell, CheckCheck, Info } from 'lucide-react'
+import { MessageSquare, Columns, BarChart2, Settings, LogOut, Hotel, Menu, X, Bell, CheckCheck, Info, Sparkles, BedDouble } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
@@ -11,6 +11,8 @@ const NAV_ITEMS = [
   { href: '/dashboard/atendimento', label: 'Atendimento', icon: MessageSquare },
   { href: '/dashboard/leads', label: 'Leads (Kanban)', icon: Columns },
   { href: '/dashboard', label: 'Métricas', icon: BarChart2, exact: true },
+  { href: '/dashboard/quartos', label: 'Quartos', icon: BedDouble },
+  { href: '/dashboard/copilot', label: 'Copilot IA', icon: Sparkles },
   { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings },
 ]
 

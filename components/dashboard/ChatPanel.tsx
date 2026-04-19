@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Bot, User, Mic, ArrowLeft, Info, Send } from 'lucide-react'
+import { Bot, User, Mic, ArrowLeft, Info, Send, Zap, ChevronDown } from 'lucide-react'
 import type { Lead, Message } from '@/lib/types/database'
 import { TakeoverButton } from './TakeoverButton'
 
@@ -28,9 +28,21 @@ const SENDER_STYLES: Record<string, string> = {
   human: 'bg-violet-600 text-white self-end',
 }
 
+const QUICK_REPLIES = [
+  'Olá! Como posso ajudar você hoje?',
+  'Quais são as datas desejadas para a sua estadia?',
+  'Quantas pessoas vão se hospedar?',
+  'Temos disponibilidade para essas datas! Posso te enviar mais detalhes?',
+  'Vou verificar a disponibilidade e retorno em breve!',
+  'Para finalizar a reserva, precisamos de seu nome completo e e-mail. Pode nos informar?',
+  'Reserva confirmada! Em breve você receberá todos os detalhes por e-mail.',
+  'Qualquer dúvida, estarei aqui para ajudar 😊',
+]
+
 export function ChatPanel({ lead, messages, onTakeover, onMessageSent, onBack, onInfo }: ChatPanelProps) {
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
+  const [showQuickReplies, setShowQuickReplies] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -55,11 +67,15 @@ export function ChatPanel({ lead, messages, onTakeover, onMessageSent, onBack, o
     }
   }
 
+  function useQuickReply(reply: string) {
+    setText(reply)
+    setShowQuickReplies(false)
+  }
+
   return (
     <div className="flex-1 flex flex-col h-full bg-white min-w-0">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-3">
-        {/* Back button — mobile only */}
         {onBack && (
           <button
             onClick={onBack}
@@ -77,7 +93,6 @@ export function ChatPanel({ lead, messages, onTakeover, onMessageSent, onBack, o
 
         <TakeoverButton lead={lead} onAction={onTakeover} />
 
-        {/* Info button — mobile only */}
         {onInfo && (
           <button
             onClick={onInfo}
@@ -122,23 +137,60 @@ export function ChatPanel({ lead, messages, onTakeover, onMessageSent, onBack, o
 
       {/* Input */}
       {!lead.bot_enabled ? (
-        <form onSubmit={handleSend} className="px-4 py-3 border-t border-gray-200 flex gap-2">
-          <input
-            type="text"
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder="Digite uma mensagem..."
-            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-          />
-          <button
-            type="submit"
-            disabled={sending || !text.trim()}
-            className="p-2.5 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white rounded-xl transition-colors"
-            aria-label="Enviar"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </form>
+        <div className="border-t border-gray-200">
+          {/* Quick replies dropdown */}
+          {showQuickReplies && (
+            <div className="border-b border-gray-100 bg-gray-50 px-3 py-2 max-h-48 overflow-y-auto">
+              <p className="text-[10px] text-gray-400 font-medium mb-1.5 uppercase tracking-wide">Respostas rápidas</p>
+              <div className="space-y-1">
+                {QUICK_REPLIES.map((reply, i) => (
+                  <button
+                    key={i}
+                    onClick={() => useQuickReply(reply)}
+                    className="w-full text-left text-xs px-3 py-2 rounded-lg bg-white border border-gray-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-colors text-gray-700"
+                  >
+                    {reply}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <form onSubmit={handleSend} className="px-4 py-3 flex gap-2 items-end">
+            <button
+              type="button"
+              onClick={() => setShowQuickReplies(v => !v)}
+              title="Respostas rápidas"
+              className={`p-2.5 rounded-xl border transition-colors flex-shrink-0 ${
+                showQuickReplies
+                  ? 'bg-violet-100 border-violet-300 text-violet-600'
+                  : 'border-gray-300 text-gray-400 hover:text-violet-500 hover:border-violet-300'
+              }`}
+            >
+              {showQuickReplies ? <ChevronDown className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+            </button>
+            <input
+              type="text"
+              value={text}
+              onChange={e => setText(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSend(e as unknown as React.FormEvent)
+                }
+              }}
+              placeholder="Digite uma mensagem..."
+              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
+            <button
+              type="submit"
+              disabled={sending || !text.trim()}
+              className="p-2.5 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white rounded-xl transition-colors flex-shrink-0"
+              aria-label="Enviar"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
       ) : (
         <div className="px-4 py-3 border-t border-gray-200 bg-violet-50">
           <p className="text-xs text-violet-600 text-center">
@@ -149,3 +201,4 @@ export function ChatPanel({ lead, messages, onTakeover, onMessageSent, onBack, o
     </div>
   )
 }
+
