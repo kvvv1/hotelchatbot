@@ -42,31 +42,19 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
         collapsed ? 'md:w-16' : 'md:w-64',
       ].join(' ')}
     >
-      {/* Header: logo + toggle buttons */}
-      <div className="flex items-center justify-between px-3 py-5 border-b border-slate-700 min-h-[4rem]">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <Hotel className="w-6 h-6 text-violet-400 flex-shrink-0" />
-          <span className={`font-semibold text-lg whitespace-nowrap transition-all ${collapsed ? 'md:hidden' : ''}`}>
-            HotelTalk
-          </span>
-        </div>
-
+      {/* Logo header */}
+      <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-700">
+        <Hotel className="w-6 h-6 text-violet-400 flex-shrink-0" />
+        <span className={`font-semibold text-lg whitespace-nowrap ${collapsed ? 'md:hidden' : ''}`}>
+          HotelTalk
+        </span>
         {/* Mobile: close (X) button */}
         <button
           onClick={onMobileClose}
-          className="md:hidden p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="md:hidden ml-auto p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           aria-label="Fechar menu"
         >
           <X className="w-4 h-4" />
-        </button>
-
-        {/* Desktop: hamburger toggle */}
-        <button
-          onClick={onToggle}
-          className="hidden md:flex p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-        >
-          <Menu className="w-4 h-4" />
         </button>
       </div>
 
@@ -93,19 +81,34 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
         })}
       </nav>
 
-      {/* Logout */}
-      <div className="px-2 pb-4 border-t border-slate-700 pt-4">
+      {/* Bottom: Logout + Desktop hamburger */}
+      <div className="px-2 pb-4 border-t border-slate-700 pt-3 space-y-1">
         <button
           onClick={handleLogout}
           title={collapsed ? 'Sair' : undefined}
           className={[
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium',
-            'text-slate-300 hover:bg-slate-800 hover:text-white w-full transition-colors',
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full transition-colors',
+            'text-slate-300 hover:bg-slate-800 hover:text-white',
             collapsed ? 'md:justify-center md:px-2' : '',
           ].join(' ')}
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />
           <span className={`whitespace-nowrap ${collapsed ? 'md:hidden' : ''}`}>Sair</span>
+        </button>
+
+        {/* Desktop hamburger — at the bottom */}
+        <button
+          onClick={onToggle}
+          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          className={[
+            'hidden md:flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full transition-colors',
+            'text-slate-400 hover:bg-slate-800 hover:text-white',
+            collapsed ? 'justify-center px-2' : '',
+          ].join(' ')}
+          aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+        >
+          <Menu className="w-4 h-4 flex-shrink-0" />
+          <span className={`whitespace-nowrap ${collapsed ? 'md:hidden' : ''}`}>Recolher menu</span>
         </button>
       </div>
     </aside>
