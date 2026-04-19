@@ -74,6 +74,7 @@ export interface Lead {
   context: LeadContext
   assigned_to: string | null
   notes: string | null
+  tags: string[]
   last_message_at: string | null
   created_at: string
 }
@@ -99,6 +100,7 @@ export interface BotSettings {
   hotel_description: string | null
   working_hours: WorkingHoursConfig
   auto_transfer_after_messages: number
+  quick_templates: string[]
   created_at: string
   updated_at: string
 }

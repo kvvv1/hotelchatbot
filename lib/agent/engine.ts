@@ -46,7 +46,7 @@ export async function processMessage(
   // Buscar credenciais HITS PMS completas do hotel
   const { data: hotelData } = await supabase
     .from('hotels')
-    .select('hits_api_url, hits_api_key, hits_tenant_name, hits_property_code, hits_client_id')
+    .select('hits_api_url, hits_api_key, hits_tenant_name, hits_property_code, hits_client_id, zapi_instance_id, zapi_token, zapi_client_token')
     .eq('id', lead.hotel_id)
     .single()
 
@@ -61,6 +61,15 @@ export async function processMessage(
           tenantName: hotelData.hits_tenant_name as string,
           propertyCode: hotelData.hits_property_code as number,
           clientId: (hotelData.hits_client_id as string) || '',
+        }
+      : undefined
+
+  const zapiCredentials =
+    hotelData?.zapi_instance_id && hotelData?.zapi_token
+      ? {
+          instanceId: hotelData.zapi_instance_id as string,
+          token: hotelData.zapi_token as string,
+          clientToken: (hotelData.zapi_client_token as string) || undefined,
         }
       : undefined
 
@@ -98,7 +107,7 @@ export async function processMessage(
     { role: 'user', content: incomingText },
   ]
 
-  const toolCtx: ToolExecutionContext = { leadId: lead.id, hitsCredentials, transferRequested: false }
+  const toolCtx: ToolExecutionContext = { leadId: lead.id, hotelId: lead.hotel_id, hitsCredentials, zapiCredentials, guestPhone: lead.guest_phone, transferRequested: false }
 
   // Loop de tool calling
   let iterations = 0

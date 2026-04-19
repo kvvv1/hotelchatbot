@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Save, Bot, Wifi, Database, Clock, CheckCircle, XCircle, Loader2, Eye, EyeOff, AlertTriangle } from 'lucide-react'
+import { Save, Bot, Wifi, Database, Clock, CheckCircle, XCircle, Loader2, Eye, EyeOff, AlertTriangle, Image, Plus, Trash2, X } from 'lucide-react'
 
-type Tab = 'agent' | 'integrations' | 'hours'
+type Tab = 'agent' | 'integrations' | 'hours' | 'gallery' | 'templates'
 
 interface BotSettingsForm {
   enabled: boolean
@@ -34,6 +34,26 @@ interface DaySchedule {
   start: string
   end: string
 }
+
+interface MediaItem {
+  id: string
+  url: string
+  storage_path: string | null
+  category: string
+  caption: string | null
+  created_at: string
+}
+
+const MEDIA_CATEGORIES = [
+  { key: 'standard', label: 'Quarto Standard' },
+  { key: 'deluxe', label: 'Quarto Deluxe' },
+  { key: 'suite', label: 'Suíte' },
+  { key: 'pool', label: 'Piscina' },
+  { key: 'restaurant', label: 'Restaurante / Café' },
+  { key: 'common', label: 'Área Comum' },
+  { key: 'exterior', label: 'Fachada / Exterior' },
+  { key: 'general', label: 'Geral' },
+]
 
 const WEEKDAYS = [
   { key: 'mon', label: 'Segunda' },
@@ -93,6 +113,19 @@ export default function ConfiguracoesPage() {
   const [savingHours, setSavingHours] = useState(false)
   const [savedHours, setSavedHours] = useState(false)
 
+  // Gallery tab
+  const [media, setMedia] = useState<MediaItem[]>([])
+  const [uploadCategory, setUploadCategory] = useState('general')
+  const [uploadCaption, setUploadCaption] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  // Templates tab
+  const [templates, setTemplates] = useState<string[]>([])
+  const [newTemplate, setNewTemplate] = useState('')
+  const [savingTemplates, setSavingTemplates] = useState(false)
+  const [savedTemplates, setSavedTemplates] = useState(false)
+
   useEffect(() => {
     async function load() {
       const supabase = createClient()
@@ -124,6 +157,9 @@ export default function ConfiguracoesPage() {
           setTimezone(wh.timezone || 'America/Sao_Paulo')
           if (Array.isArray(wh.days) && wh.days.length > 0) setDays(wh.days)
         }
+        if (Array.isArray(settings.quick_templates)) {
+          setTemplates(settings.quick_templates as string[])
+        }
       }
 
       if (hotel) {
@@ -140,6 +176,14 @@ export default function ConfiguracoesPage() {
           hits_api_key: hotel.hits_api_key || '',
         })
       }
+
+      // Gallery
+      const { data: mediaData } = await supabase
+        .from('hotel_media')
+        .select('*')
+        .eq('hotel_id', profile.hotel_id)
+        .order('created_at', { ascending: false })
+      if (mediaData) setMedia(mediaData as MediaItem[])
 
       setLoading(false)
     }
@@ -199,6 +243,61 @@ export default function ConfiguracoesPage() {
     setTimeout(() => setSavedHours(false), 2500)
   }
 
+  async function handleUploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !hotelId) return
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const supabase = createClient()
+      const ext = file.name.split('.').pop() || 'jpg'
+      const path = `${hotelId}/${uploadCategory}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('hotel-media').upload(path, file, { upsert: false })
+      if (upErr) throw new Error(upErr.message)
+      const { data: { publicUrl } } = supabase.storage.from('hotel-media').getPublicUrl(path)
+      const { data: inserted, error: insErr } = await supabase
+        .from('hotel_media')
+        .insert({ hotel_id: hotelId, url: publicUrl, storage_path: path, category: uploadCategory, caption: uploadCaption || null })
+        .select('*')
+        .single()
+      if (insErr) throw new Error(insErr.message)
+      setMedia(prev => [inserted as MediaItem, ...prev])
+      setUploadCaption('')
+      e.target.value = ''
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Erro ao enviar foto')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleDeletePhoto(item: MediaItem) {
+    const supabase = createClient()
+    if (item.storage_path) {
+      await supabase.storage.from('hotel-media').remove([item.storage_path])
+    }
+    await supabase.from('hotel_media').delete().eq('id', item.id)
+    setMedia(prev => prev.filter(m => m.id !== item.id))
+  }
+
+  async function handleSaveTemplates(e: React.FormEvent) {
+    e.preventDefault()
+    if (!hotelId) return
+    setSavingTemplates(true)
+    const supabase = createClient()
+    if (settingsId) {
+      await supabase.from('bot_settings').update({ quick_templates: templates }).eq('id', settingsId)
+    } else {
+      const { data } = await supabase.from('bot_settings').insert({
+        hotel_id: hotelId, enabled: true, hotel_name: '', quick_templates: templates,
+      }).select('id').single()
+      if (data) setSettingsId(data.id)
+    }
+    setSavingTemplates(false)
+    setSavedTemplates(true)
+    setTimeout(() => setSavedTemplates(false), 2500)
+  }
+
   async function handleTestZapi() {
     if (!zapiForm.zapi_instance_id || !zapiForm.zapi_token) return
     setTestZapi('testing')
@@ -243,6 +342,8 @@ export default function ConfiguracoesPage() {
     { key: 'agent', label: 'Agente IA', icon: Bot },
     { key: 'integrations', label: 'Integrações', icon: Wifi },
     { key: 'hours', label: 'Horários', icon: Clock },
+    { key: 'gallery', label: 'Galeria', icon: Image },
+    { key: 'templates', label: 'Templates', icon: Save },
   ]
 
   return (
@@ -554,6 +655,160 @@ export default function ConfiguracoesPage() {
             className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white font-medium rounded-lg text-sm transition-colors">
             {savingHours ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {savingHours ? 'Salvando…' : savedHours ? '✓ Salvo!' : 'Salvar horários'}
+          </button>
+        </form>
+      )}
+      {/* ── TAB: GALERIA ── */}
+      {tab === 'gallery' && (
+        <div className="space-y-5">
+          {/* Upload */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-4">
+            <div className="flex items-center gap-2">
+              <Image className="w-5 h-5 text-violet-500" />
+              <h3 className="font-medium text-gray-900">Adicionar foto</h3>
+            </div>
+            <p className="text-xs text-gray-500">
+              Fotos organizadas por categoria. O agente pode enviá-las automaticamente ao WhatsApp quando o hóspede pedir.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                <select
+                  value={uploadCategory}
+                  onChange={e => setUploadCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                >
+                  {MEDIA_CATEGORIES.map(c => (
+                    <option key={c.key} value={c.key}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Legenda (opcional)</label>
+                <input
+                  type="text"
+                  value={uploadCaption}
+                  onChange={e => setUploadCaption(e.target.value)}
+                  placeholder="Ex: Vista panorâmica da piscina"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                />
+              </div>
+            </div>
+            <label className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? 'border-violet-300 bg-violet-50' : 'border-gray-300 hover:border-violet-400 hover:bg-violet-50'}`}>
+              {uploading
+                ? <><Loader2 className="w-4 h-4 text-violet-500 animate-spin" /><span className="text-sm text-violet-600">Enviando…</span></>
+                : <><Plus className="w-4 h-4 text-gray-400" /><span className="text-sm text-gray-500">Clique para selecionar uma foto</span></>
+              }
+              <input type="file" accept="image/*" className="hidden" onChange={handleUploadPhoto} disabled={uploading} />
+            </label>
+            {uploadError && (
+              <p className="text-xs text-red-600 flex items-center gap-1"><X className="w-3 h-3" />{uploadError}</p>
+            )}
+          </div>
+
+          {/* Gallery by category */}
+          {MEDIA_CATEGORIES.filter(c => media.some(m => m.category === c.key)).map(cat => (
+            <div key={cat.key} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+              <h4 className="font-medium text-gray-900 mb-3 text-sm">{cat.label} <span className="text-gray-400 font-normal">({media.filter(m => m.category === cat.key).length})</span></h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {media.filter(m => m.category === cat.key).map(item => (
+                  <div key={item.id} className="relative group rounded-lg overflow-hidden border border-gray-200 aspect-video bg-gray-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={item.url} alt={item.caption || cat.label} className="w-full h-full object-cover" />
+                    {item.caption && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1">
+                        <p className="text-[10px] text-white truncate">{item.caption}</p>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => handleDeletePhoto(item)}
+                      className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3 h-3 text-white" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {media.length === 0 && (
+            <div className="flex flex-col items-center py-12 text-gray-400 gap-2 bg-white rounded-xl border border-gray-200">
+              <Image className="w-10 h-10 opacity-20" />
+              <p className="text-sm">Nenhuma foto ainda</p>
+              <p className="text-xs text-center">Adicione fotos dos quartos e áreas do hotel para o agente usar no atendimento</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: TEMPLATES ── */}
+      {tab === 'templates' && (
+        <form onSubmit={handleSaveTemplates} className="space-y-5">
+          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-4">
+            <div>
+              <h3 className="font-medium text-gray-900 mb-1">Templates de mensagem rápida</h3>
+              <p className="text-xs text-gray-500">Mensagens prontas que aparecem no painel de atendimento. Clique em uma para preenchê-la automaticamente.</p>
+            </div>
+
+            {/* Add new */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newTemplate}
+                onChange={e => setNewTemplate(e.target.value)}
+                placeholder="Digite um novo template…"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    const t = newTemplate.trim()
+                    if (t && !templates.includes(t)) {
+                      setTemplates(prev => [...prev, t])
+                      setNewTemplate('')
+                    }
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const t = newTemplate.trim()
+                  if (t && !templates.includes(t)) {
+                    setTemplates(prev => [...prev, t])
+                    setNewTemplate('')
+                  }
+                }}
+                className="px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* List */}
+            <div className="space-y-2">
+              {templates.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">Nenhum template ainda. Adicione um acima.</p>
+              )}
+              {templates.map((t, i) => (
+                <div key={i} className="flex items-start gap-2 px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="flex-1 text-sm text-gray-800 leading-relaxed">{t}</p>
+                  <button
+                    type="button"
+                    onClick={() => setTemplates(prev => prev.filter((_, idx) => idx !== i))}
+                    className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors mt-0.5"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button type="submit" disabled={savingTemplates}
+            className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white font-medium rounded-lg text-sm transition-colors">
+            {savingTemplates ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {savingTemplates ? 'Salvando…' : savedTemplates ? '✓ Salvo!' : 'Salvar templates'}
           </button>
         </form>
       )}

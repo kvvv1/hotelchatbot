@@ -333,6 +333,53 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Leads por dia — últimos 7 dias */}
+      <LeadsChart leads={leads} />
+    </div>
+  )
+}
+
+function LeadsChart({ leads }: { leads: Lead[] }) {
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (6 - i))
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
+
+  const counts = days.map(day => {
+    const next = new Date(day)
+    next.setDate(next.getDate() + 1)
+    return leads.filter(l => {
+      const t = new Date(l.created_at).getTime()
+      return t >= day.getTime() && t < next.getTime()
+    }).length
+  })
+
+  const max = Math.max(...counts, 1)
+
+  const dayLabels = days.map(d =>
+    d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+  )
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
+      <h3 className="font-medium text-gray-900 mb-4">Novos leads — últimos 7 dias</h3>
+      <div className="flex items-end gap-2 h-28">
+        {counts.map((count, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+            <span className="text-[10px] text-gray-500 font-medium">{count > 0 ? count : ''}</span>
+            <div className="w-full rounded-t-md bg-violet-100 relative overflow-hidden" style={{ height: '80px' }}>
+              <div
+                className="absolute bottom-0 left-0 right-0 bg-violet-500 rounded-t-md transition-all duration-500"
+                style={{ height: `${(count / max) * 100}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-gray-400 capitalize">{dayLabels[i]}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

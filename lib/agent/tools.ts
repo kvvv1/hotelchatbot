@@ -2,6 +2,8 @@ import type { ChatCompletionTool } from 'openai/resources/chat/completions'
 import { checkAvailability, mapToHitsRooms, getRoomingList, getFolio, checkInReservation, createSimpleReservation, type HitsCredentials } from '@/lib/hits/client'
 import { updateStage, updateContext } from '@/lib/leads/service'
 import type { HitsRoom } from '@/lib/hits/types'
+import { zapiSendImage, type ZapiCredentials } from '@/lib/zapi/client'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const AGENT_TOOLS: ChatCompletionTool[] = [
   {
@@ -156,11 +158,32 @@ export const AGENT_TOOLS: ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'send_photos',
+      description: 'Envia fotos do hotel para o hóspede via WhatsApp. Use quando o hóspede pedir fotos do quarto, piscina, restaurante ou qualquer área do hotel. Sempre pergunte qual categoria o hóspede quer ver antes de enviar.',
+      parameters: {
+        type: 'object',
+        properties: {
+          category: {
+            type: 'string',
+            enum: ['standard', 'deluxe', 'suite', 'pool', 'restaurant', 'common', 'exterior', 'general'],
+            description: 'Categoria das fotos a enviar (tipo de quarto ou área do hotel)',
+          },
+        },
+        required: ['category'],
+      },
+    },
+  },
 ]
 
 export interface ToolExecutionContext {
   leadId: string
+  hotelId?: string
   hitsCredentials?: HitsCredentials
+  zapiCredentials?: ZapiCredentials
+  guestPhone?: string
   transferRequested?: boolean
 }
 
@@ -294,6 +317,32 @@ export async function executeTool(
       case 'transfer_to_human': {
         ctx.transferRequested = true
         return JSON.stringify({ success: true, reason: args.reason })
+      }
+
+      case 'send_photos': {
+        if (!ctx.zapiCredentials || !ctx.guestPhone || !ctx.hotelId) {
+          return JSON.stringify({ error: 'Configuração de WhatsApp não encontrada' })
+        }
+        const category = String(args.category || 'general')
+        const supabase = createAdminClient()
+        const { data: photos } = await supabase
+          .from('hotel_media')
+          .select('url, caption')
+          .eq('hotel_id', ctx.hotelId)
+          .eq('category', category)
+          .limit(5)
+        if (!photos || photos.length === 0) {
+          return JSON.stringify({ error: 'Nenhuma foto encontrada para esta categoria', category })
+        }
+        // Send photos one by one
+        let sentCount = 0
+        for (const photo of photos) {
+          try {
+            await zapiSendImage(ctx.zapiCredentials, ctx.guestPhone, photo.url, photo.caption || '')
+            sentCount++
+          } catch { /* continue on individual failure */ }
+        }
+        return JSON.stringify({ success: true, sent: sentCount, total: photos.length, category })
       }
 
       default:

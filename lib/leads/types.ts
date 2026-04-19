@@ -16,6 +16,7 @@ export interface UpdateLeadInput {
   context?: Record<string, unknown>
   assigned_to?: string | null
   notes?: string
+  tags?: string[]
   last_message_at?: string
 }
 

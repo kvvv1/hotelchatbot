@@ -111,3 +111,25 @@ export async function zapiGetProfilePicture(
 export function validateCredentials(credentials: ZapiCredentials): boolean {
   return !!(credentials.instanceId?.trim() && credentials.token?.trim())
 }
+
+export async function zapiSendImage(
+  credentials: ZapiCredentials,
+  phone: string,
+  imageUrl: string,
+  caption?: string
+): Promise<{ success: boolean; messageId?: string }> {
+  const { instanceId, token, clientToken } = credentials
+  const baseUrl = getInstanceUrl(instanceId, token)
+  const cleanPhone = phone.replace(/[^0-9]/g, '')
+
+  const data = await zapiRequest<Record<string, unknown>>(`${baseUrl}/send-image`, {
+    method: 'POST',
+    headers: clientToken ? { 'Client-Token': clientToken } : undefined,
+    body: JSON.stringify({ phone: cleanPhone, image: imageUrl, caption: caption || '' }),
+  })
+
+  return {
+    success: true,
+    messageId: String(data.messageId || data.id || data.zaapId || ''),
+  }
+}

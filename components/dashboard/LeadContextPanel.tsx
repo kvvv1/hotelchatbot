@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useState } from 'react'
-import { Calendar, Users, BedDouble, Mail, MessageSquare, ArrowLeft, PenLine, XCircle, Loader2, Save } from 'lucide-react'
+import { Calendar, Users, BedDouble, Mail, MessageSquare, ArrowLeft, PenLine, XCircle, Loader2, Save, Tag, Plus, X } from 'lucide-react'
 import type { Lead } from '@/lib/types/database'
 
 const STAGE_LABELS: Record<string, string> = {
@@ -40,6 +40,8 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
   const [notesSaved, setNotesSaved] = useState(false)
   const [closing, setClosing] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
+  const [tags, setTags] = useState<string[]>(lead.tags || [])
+  const [newTag, setNewTag] = useState('')
 
   function formatDate(dateStr?: string) {
     if (!dateStr) return 'â€”'
@@ -58,6 +60,31 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
     setNotesSaved(true)
     setTimeout(() => setNotesSaved(false), 2500)
     onLeadUpdated?.({ ...lead, notes })
+  }
+
+  async function addTag() {
+    const t = newTag.trim()
+    if (!t || tags.includes(t)) return
+    const updatedTags = [...tags, t]
+    setTags(updatedTags)
+    setNewTag('')
+    await fetch(`/api/leads/${lead.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags: updatedTags }),
+    })
+    onLeadUpdated?.({ ...lead, tags: updatedTags })
+  }
+
+  async function removeTag(tag: string) {
+    const updatedTags = tags.filter(t => t !== tag)
+    setTags(updatedTags)
+    await fetch(`/api/leads/${lead.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags: updatedTags }),
+    })
+    onLeadUpdated?.({ ...lead, tags: updatedTags })
   }
 
   async function handleClose() {
@@ -124,6 +151,37 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
           <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${STAGE_COLORS[lead.stage] || 'bg-gray-100 text-gray-700'}`}>
             {STAGE_LABELS[lead.stage] || lead.stage}
           </span>
+        </div>
+
+        {/* Tags */}
+        <div>
+          <div className="flex items-center gap-1.5 mb-2">
+            <Tag className="w-3.5 h-3.5 text-gray-400" />
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Etiquetas</p>
+          </div>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {tags.map(tag => (
+              <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-100 text-violet-700 rounded-full text-xs font-medium">
+                {tag}
+                <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            <input
+              type="text"
+              value={newTag}
+              onChange={e => setNewTag(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
+              placeholder="VIP, grupo, corporativo…"
+              className="flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
+            <button type="button" onClick={addTag} className="p-1.5 bg-gray-100 hover:bg-violet-100 hover:text-violet-600 rounded-lg transition-colors">
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* InformaÃ§Ãµes coletadas */}
