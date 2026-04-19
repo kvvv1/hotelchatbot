@@ -67,7 +67,7 @@ export function ChatPanel({ lead, messages, onTakeover, onMessageSent, onBack, o
     }
   }
 
-  function useQuickReply(reply: string) {
+  function applyQuickReply(reply: string) {
     setText(reply)
     setShowQuickReplies(false)
   }
@@ -146,7 +146,7 @@ export function ChatPanel({ lead, messages, onTakeover, onMessageSent, onBack, o
                 {QUICK_REPLIES.map((reply, i) => (
                   <button
                     key={i}
-                    onClick={() => useQuickReply(reply)}
+                    onClick={() => applyQuickReply(reply)}
                     className="w-full text-left text-xs px-3 py-2 rounded-lg bg-white border border-gray-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-colors text-gray-700"
                   >
                     {reply}
