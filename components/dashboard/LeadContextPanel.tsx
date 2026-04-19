@@ -16,11 +16,11 @@ const STAGE_LABELS: Record<string, string> = {
 
 const STAGE_COLORS: Record<string, string> = {
   new_contact: 'bg-gray-100 text-gray-700',
-  in_attendance: 'bg-blue-100 text-blue-700',
+  in_attendance: 'bg-violet-100 text-violet-700',
   checking_availability: 'bg-yellow-100 text-yellow-700',
   proposal_sent: 'bg-purple-100 text-purple-700',
   negotiating: 'bg-orange-100 text-orange-700',
-  booking_in_progress: 'bg-indigo-100 text-indigo-700',
+  booking_in_progress: 'bg-purple-100 text-purple-700',
   booked: 'bg-green-100 text-green-700',
   not_converted: 'bg-red-100 text-red-700',
 }

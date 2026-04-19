@@ -27,8 +27,8 @@ export function Sidebar() {
     <aside className="w-64 bg-slate-900 text-white flex flex-col h-screen fixed left-0 top-0 z-10">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-700">
-        <Hotel className="w-6 h-6 text-blue-400" />
-        <span className="font-semibold text-lg">Hotel Agent</span>
+        <Hotel className="w-6 h-6 text-violet-400" />
+        <span className="font-semibold text-lg">HotelTalk</span>
       </div>
 
       {/* Nav */}
@@ -41,7 +41,7 @@ export function Sidebar() {
               href={href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 active
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-violet-600 text-white'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
             >

@@ -98,7 +98,7 @@ export default function DashboardPage() {
 
       {/* Métricas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="Total de leads" value={metrics.total} icon={MessageSquare} color="bg-blue-500" />
+        <MetricCard label="Total de leads" value={metrics.total} icon={MessageSquare} color="bg-violet-500" />
         <MetricCard label="Reservas confirmadas" value={metrics.booked} icon={CheckCircle} color="bg-green-500" />
         <MetricCard label="Em andamento" value={metrics.inProgress} icon={Clock} color="bg-yellow-500" />
         <MetricCard
@@ -113,11 +113,11 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
-            <Bot className="w-5 h-5 text-blue-500" />
-            <h3 className="font-medium text-gray-900">Atendidos pela IA</h3>
+            <Bot className="w-5 h-5 text-violet-500" />
+            <h3 className="font-medium text-gray-900">Atendidos pelo Agente</h3>
           </div>
           <p className="text-3xl font-bold text-gray-900">{metrics.botHandled}</p>
-          <p className="text-sm text-gray-500 mt-1">leads com bot ativo</p>
+          <p className="text-sm text-gray-500 mt-1">leads com agente ativo</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
@@ -147,13 +147,13 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center gap-2">
                 {lead.bot_enabled
-                  ? <Bot className="w-3.5 h-3.5 text-blue-500" />
+                  ? <Bot className="w-3.5 h-3.5 text-violet-500" />
                   : <User className="w-3.5 h-3.5 text-orange-500" />
                 }
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   lead.stage === 'booked' ? 'bg-green-100 text-green-700' :
                   lead.stage === 'not_converted' ? 'bg-red-100 text-red-700' :
-                  'bg-blue-100 text-blue-700'
+                  'bg-violet-100 text-violet-700'
                 }`}>
                   {lead.stage.replace(/_/g, ' ')}
                 </span>

@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Hotel Agent — Gestão de Leads",
-  description: "Agente inteligente e dashboard de atendimento hoteleiro",
+  title: "HotelTalk — Gestão de Leads",
+  description: "Agente de IA e dashboard de atendimento hoteleiro",
 };
 
 export default function RootLayout({

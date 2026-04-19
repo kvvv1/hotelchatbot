@@ -6,11 +6,11 @@ import type { Lead, LeadStage } from '@/lib/types/database'
 
 const COLUMNS: { stage: LeadStage; label: string; color: string }[] = [
   { stage: 'new_contact', label: 'Novos contatos', color: 'border-gray-300' },
-  { stage: 'in_attendance', label: 'Em atendimento', color: 'border-blue-300' },
+  { stage: 'in_attendance', label: 'Em atendimento', color: 'border-violet-300' },
   { stage: 'checking_availability', label: 'Consultando', color: 'border-yellow-300' },
   { stage: 'proposal_sent', label: 'Proposta enviada', color: 'border-purple-300' },
   { stage: 'negotiating', label: 'Em negociação', color: 'border-orange-300' },
-  { stage: 'booking_in_progress', label: 'Reserva em andamento', color: 'border-indigo-300' },
+  { stage: 'booking_in_progress', label: 'Reserva em andamento', color: 'border-purple-300' },
   { stage: 'booked', label: 'Reserva confirmada', color: 'border-green-300' },
   { stage: 'not_converted', label: 'Não convertido', color: 'border-red-300' },
 ]
@@ -54,7 +54,7 @@ export function KanbanBoard({ leadsByStage, onStageChange, onLeadClick }: Kanban
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={`flex-1 overflow-y-auto p-3 space-y-2 min-h-[100px] transition-colors ${
-                        snapshot.isDraggingOver ? 'bg-blue-50' : ''
+                        snapshot.isDraggingOver ? 'bg-violet-50' : ''
                       }`}
                     >
                       {columnLeads.map((lead, index) => (

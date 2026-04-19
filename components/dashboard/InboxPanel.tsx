@@ -23,7 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
   waiting_guest: 'bg-yellow-100 text-yellow-700',
   waiting_human: 'bg-red-100 text-red-700',
-  human_active: 'bg-blue-100 text-blue-700',
+  human_active: 'bg-violet-100 text-violet-700',
   closed: 'bg-gray-100 text-gray-600',
 }
 
@@ -47,7 +47,7 @@ export function InboxPanel({ leads, selectedId, onSelect }: InboxPanelProps) {
             key={lead.id}
             onClick={() => onSelect(lead)}
             className={`w-full px-4 py-3 text-left border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-              selectedId === lead.id ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''
+              selectedId === lead.id ? 'bg-violet-50 border-l-2 border-l-violet-500' : ''
             }`}
           >
             <div className="flex items-start justify-between gap-2">
@@ -57,7 +57,7 @@ export function InboxPanel({ leads, selectedId, onSelect }: InboxPanelProps) {
                     {lead.guest_name || lead.guest_phone}
                   </span>
                   {lead.bot_enabled ? (
-                    <Bot className="w-3 h-3 text-blue-500 flex-shrink-0" aria-label="IA ativa"/>
+                    <Bot className="w-3 h-3 text-violet-500 flex-shrink-0" aria-label="Agente ativo"/>
                   ) : (
                     <User className="w-3 h-3 text-orange-500 flex-shrink-0" aria-label="Humano ativo"/>
                   )}

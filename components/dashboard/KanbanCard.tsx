@@ -14,14 +14,14 @@ export function KanbanCard({ lead }: KanbanCardProps) {
   const hasContext = ctx.checkIn || ctx.guests || ctx.roomType
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all">
+    <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-violet-200 transition-all">
       {/* Nome e indicador IA/Humano */}
       <div className="flex items-center justify-between gap-2 mb-2">
         <p className="font-medium text-sm text-gray-900 truncate">
           {lead.guest_name || lead.guest_phone}
         </p>
         {lead.bot_enabled ? (
-          <Bot className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" aria-label="IA ativa"/>
+          <Bot className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" aria-label="Agente ativo"/>
         ) : (
           <User className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" aria-label="Humano ativo"/>
         )}

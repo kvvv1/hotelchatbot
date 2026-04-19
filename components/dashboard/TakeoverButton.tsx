@@ -39,7 +39,7 @@ export function TakeoverButton({ lead, onAction }: TakeoverButtonProps) {
     <button
       onClick={handle}
       disabled={loading}
-      className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+      className="flex items-center gap-2 px-4 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
     >
       <Bot className="w-4 h-4" />
       {loading ? 'Devolvendo...' : 'Devolver para IA'}

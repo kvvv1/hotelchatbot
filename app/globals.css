@@ -24,3 +24,47 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ── Auth page animations ── */
+@keyframes floatAnim {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-18px); }
+}
+@keyframes floatSlowAnim {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes floatFastAnim {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-24px); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.float      { animation: floatAnim     6s ease-in-out infinite; }
+.float-slow { animation: floatSlowAnim 9s ease-in-out infinite; }
+.float-fast { animation: floatFastAnim 4s ease-in-out infinite; }
+
+.auth-fade-up { animation: fadeUp 0.25s ease-out both; }
+
+.auth-grid {
+  background-image: radial-gradient(circle, rgba(139,92,246,0.08) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.auth-shimmer {
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255,255,255,0.45) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3.5s linear infinite;
+}
