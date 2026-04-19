@@ -156,7 +156,7 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <p className="mt-1.5 text-xs font-medium text-neutral-600">
+                <p className="mt-1.5 text-xs font-medium text-neutral-700">
                   Agente de IA que atende hóspedes no WhatsApp e fecha reservas.
                 </p>
               </header>
@@ -177,7 +177,7 @@ export default function LoginPage() {
                     Criar conta
                   </button>
                 </div>
-                <p className="mt-2 text-[10px] sm:text-xs text-neutral-500">
+                <p className="mt-2 text-[10px] sm:text-xs text-neutral-700">
                   {isLogin ? 'Entre com seu email e senha para acessar.' : 'Crie sua conta e comece a atender hóspedes.'}
                 </p>
               </nav>
@@ -200,8 +200,8 @@ export default function LoginPage() {
                   ) : view === 'forgot' ? (
                     <form onSubmit={onForgotSubmit} className="space-y-4">
                       <div>
-                        <p className="text-sm text-neutral-600 mb-3">Digite seu email e enviaremos um link para redefinir sua senha.</p>
-                        <label className="text-sm font-medium" htmlFor="forgot-email">Email</label>
+                        <p className="text-sm text-neutral-800 mb-3">Digite seu email e enviaremos um link para redefinir sua senha.</p>
+                        <label className="text-sm font-medium text-neutral-900" htmlFor="forgot-email">Email</label>
                         <input id="forgot-email" type="email" autoComplete="email" required value={forgotEmail}
                           onChange={e => setForgotEmail(e.target.value)}
                           className="mt-1.5 w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200" />
@@ -212,28 +212,28 @@ export default function LoginPage() {
                         {loading ? 'Enviando…' : 'Enviar link de recuperação'}
                       </button>
                       <button type="button" onClick={() => { setView('login'); setError(null) }}
-                        className="w-full text-center text-sm text-neutral-500 hover:text-neutral-700 underline-offset-4 hover:underline">
+                        className="w-full text-center text-sm text-neutral-700 hover:text-neutral-900 underline-offset-4 hover:underline">
                         Voltar ao login
                       </button>
                     </form>
                   ) : (
                     <form onSubmit={onLoginSubmit} className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium" htmlFor="email">Email</label>
+                        <label className="text-sm font-medium text-neutral-900" htmlFor="email">Email</label>
                         <input id="email" type="email" autoComplete="email" required value={email}
                           onChange={e => setEmail(e.target.value)}
                           className="w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200"
                           placeholder="seu@email.com" />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium" htmlFor="password">Senha</label>
+                        <label className="text-sm font-medium text-neutral-900" htmlFor="password">Senha</label>
                         <input id="password" type="password" autoComplete="current-password" required value={password}
                           onChange={e => setPassword(e.target.value)}
                           className="w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200"
                           placeholder="••••••••" />
                         <div className="flex justify-end">
                           <button type="button" onClick={() => { setForgotEmail(email); setView('forgot'); setError(null) }}
-                            className="text-xs font-medium text-neutral-500 underline-offset-4 hover:text-neutral-700 hover:underline">
+                            className="text-xs font-medium text-neutral-600 underline-offset-4 hover:text-neutral-900 hover:underline">
                             Esqueci minha senha
                           </button>
                         </div>
@@ -251,29 +251,29 @@ export default function LoginPage() {
                 <div className={`transition-all duration-300 ease-out ${!isLogin ? 'opacity-100 translate-y-0' : 'pointer-events-none absolute inset-0 opacity-0 translate-y-2'}`} aria-hidden={isLogin}>
                   <form onSubmit={onSignupSubmit} className="space-y-3">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-medium" htmlFor="hotel-name">Nome do hotel</label>
+                      <label className="text-sm font-medium text-neutral-900" htmlFor="hotel-name">Nome do hotel</label>
                       <input id="hotel-name" type="text" required value={hotelName}
                         onChange={e => setHotelName(e.target.value)}
                         className="w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200"
                         placeholder="Ex.: Hotel Macuco" />
-                      <p className="text-[10px] text-neutral-500">Usaremos esse nome para configurar seu painel.</p>
+                      <p className="text-[10px] text-neutral-700">Usaremos esse nome para configurar seu painel.</p>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-sm font-medium" htmlFor="signup-email">Email</label>
+                      <label className="text-sm font-medium text-neutral-900" htmlFor="signup-email">Email</label>
                       <input id="signup-email" type="email" autoComplete="email" required value={signupEmail}
                         onChange={e => setSignupEmail(e.target.value)}
                         className="w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200"
                         placeholder="seu@email.com" />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-sm font-medium" htmlFor="signup-password">Senha</label>
+                      <label className="text-sm font-medium text-neutral-900" htmlFor="signup-password">Senha</label>
                       <input id="signup-password" type="password" autoComplete="new-password" required value={signupPassword}
                         onChange={e => setSignupPassword(e.target.value)}
                         className="w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200"
                         placeholder="Mínimo 6 caracteres" />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-sm font-medium" htmlFor="signup-confirm">Confirmar senha</label>
+                      <label className="text-sm font-medium text-neutral-900" htmlFor="signup-confirm">Confirmar senha</label>
                       <input id="signup-confirm" type="password" autoComplete="new-password" required value={signupConfirm}
                         onChange={e => setSignupConfirm(e.target.value)}
                         className="w-full rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm text-neutral-900 shadow-sm outline-none ring-1 ring-transparent transition focus:border-violet-400 focus:ring-violet-200"
@@ -289,7 +289,7 @@ export default function LoginPage() {
                 </div>
               </section>
 
-              <footer className="relative mt-5 text-center text-xs text-neutral-400">
+              <footer className="relative mt-5 text-center text-xs text-neutral-600">
                 © {new Date().getFullYear()} HotelTalk
               </footer>
             </div>

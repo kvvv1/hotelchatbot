@@ -53,11 +53,12 @@ export default function DashboardPage() {
   const [noHotel, setNoHotel] = useState(false)
   const [hotelName, setHotelName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   async function createHotel(e: React.FormEvent) {
     e.preventDefault()
     setCreating(true)
-    setError(null)
+    setCreateError(null)
     try {
       const res = await fetch('/api/auth/setup', {
         method: 'POST',
@@ -70,10 +71,10 @@ export default function DashboardPage() {
         setLoading(true)
         load()
       } else {
-        setError(json.error || `Erro ${res.status} ao criar hotel`)
+        setCreateError(json.error || `Erro ${res.status} ao criar hotel`)
       }
     } catch (err) {
-      setError('Erro de conexão. Tente novamente.')
+      setCreateError('Erro de conexão. Tente novamente.')
     } finally {
       setCreating(false)
     }
@@ -187,8 +188,8 @@ export default function DashboardPage() {
             className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
             required
           />
-          {error && (
-            <p className="text-xs text-red-500 text-center">{error}</p>
+          {createError && (
+            <p className="text-xs text-red-600 text-center font-medium">{createError}</p>
           )}
           <button
             type="submit"
