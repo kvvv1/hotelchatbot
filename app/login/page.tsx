@@ -89,10 +89,24 @@ export default function LoginPage() {
         options: { data: { full_name: hotelName } },
       })
       if (signUpError) { setError(signUpError.message); return }
+
       if (!data.session) {
         setNotice('Conta criada! Verifique seu email para confirmar e depois faça login.')
         return
       }
+
+      // Create hotel + profile via server-side API
+      const setupRes = await fetch('/api/auth/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hotelName }),
+      })
+      if (!setupRes.ok) {
+        const err = await setupRes.json().catch(() => ({}))
+        setError(err.error || 'Erro ao configurar o hotel. Tente novamente.')
+        return
+      }
+
       router.replace('/dashboard')
       router.refresh()
     } finally {

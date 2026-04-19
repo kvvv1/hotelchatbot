@@ -50,47 +50,73 @@ export default function DashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [noHotel, setNoHotel] = useState(false)
+  const [hotelName, setHotelName] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  async function createHotel(e: React.FormEvent) {
+    e.preventDefault()
+    setCreating(true)
+    try {
+      const res = await fetch('/api/auth/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hotelName: hotelName.trim() || 'Meu Hotel' }),
+      })
+      if (res.ok) {
+        setNoHotel(false)
+        setLoading(true)
+        load()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setError(err.error || 'Erro ao criar hotel')
+      }
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function load() {
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setError('Usuário não autenticado')
+        setLoading(false)
+        return
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('hotel_id')
+        .eq('id', user.id)
+        .single()
+
+      if (!profile?.hotel_id) {
+        setNoHotel(true)
+        setLoading(false)
+        return
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('hotel_id', profile.hotel_id)
+        .order('created_at', { ascending: false })
+
+      if (fetchError) throw fetchError
+      setLeads((data as Lead[]) || [])
+    } catch (e) {
+      setError('Erro ao carregar métricas')
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      try {
-        const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          setError('Usuário não autenticado')
-          setLoading(false)
-          return
-        }
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('hotel_id')
-          .eq('id', user.id)
-          .single()
-
-        if (!profile?.hotel_id) {
-          setError('Perfil sem hotel associado')
-          setLoading(false)
-          return
-        }
-
-        const { data, error: fetchError } = await supabase
-          .from('leads')
-          .select('*')
-          .eq('hotel_id', profile.hotel_id)
-          .order('created_at', { ascending: false })
-
-        if (fetchError) throw fetchError
-        setLeads((data as Lead[]) || [])
-      } catch (e) {
-        setError('Erro ao carregar métricas')
-        console.error(e)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const metrics: Metrics = {
@@ -130,11 +156,39 @@ export default function DashboardPage() {
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <p className="text-gray-500 text-sm">{error}</p>
         <button
-          onClick={() => { setLoading(true); setError(null) }}
+          onClick={() => { setLoading(true); setError(null); load() }}
           className="text-sm text-violet-600 hover:underline"
         >
           Tentar novamente
         </button>
+      </div>
+    )
+  }
+
+  if (noHotel) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-6 px-4">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Configure seu hotel</h2>
+          <p className="text-sm text-gray-500">Sua conta ainda não tem um hotel associado. Informe o nome para começar.</p>
+        </div>
+        <form onSubmit={createHotel} className="flex flex-col gap-3 w-full max-w-sm">
+          <input
+            type="text"
+            value={hotelName}
+            onChange={e => setHotelName(e.target.value)}
+            placeholder="Nome do hotel"
+            className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            required
+          />
+          <button
+            type="submit"
+            disabled={creating}
+            className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white font-medium rounded-xl text-sm transition-colors"
+          >
+            {creating ? 'Criando...' : 'Criar hotel e continuar'}
+          </button>
+        </form>
       </div>
     )
   }
