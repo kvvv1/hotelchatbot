@@ -1,6 +1,6 @@
 'use client'
 
-import { Calendar, Users, BedDouble, Mail, MessageSquare } from 'lucide-react'
+import { Calendar, Users, BedDouble, Mail, MessageSquare, ArrowLeft } from 'lucide-react'
 import type { Lead } from '@/lib/types/database'
 
 const STAGE_LABELS: Record<string, string> = {
@@ -27,9 +27,10 @@ const STAGE_COLORS: Record<string, string> = {
 
 interface LeadContextPanelProps {
   lead: Lead
+  onBack?: () => void
 }
 
-export function LeadContextPanel({ lead }: LeadContextPanelProps) {
+export function LeadContextPanel({ lead, onBack }: LeadContextPanelProps) {
   const ctx = lead.context || {}
 
   function formatDate(dateStr?: string) {
@@ -39,12 +40,21 @@ export function LeadContextPanel({ lead }: LeadContextPanelProps) {
   }
 
   return (
-    <div className="w-72 bg-white border-l border-gray-200 flex flex-col h-full">
-      <div className="px-5 py-4 border-b border-gray-200">
+    <div className="w-full bg-white border-l border-gray-200 flex flex-col h-full">
+      <div className="px-4 py-4 border-b border-gray-200 flex items-center gap-3">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="md:hidden p-1.5 -ml-1 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+            aria-label="Voltar ao chat"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        )}
         <h3 className="font-semibold text-gray-900 text-sm">Dados do Lead</h3>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-5">
         {/* Estágio */}
         <div>
           <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Estágio</p>

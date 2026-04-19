@@ -22,9 +22,9 @@ function MetricCard({ label, value, icon: Icon, color }: {
   color: string
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm text-gray-500 font-medium">{label}</p>
+        <p className="text-xs sm:text-sm text-gray-500 font-medium">{label}</p>
         <div className={`p-2 rounded-lg ${color}`}>
           <Icon className="w-4 h-4 text-white" />
         </div>
@@ -34,34 +34,60 @@ function MetricCard({ label, value, icon: Icon, color }: {
   )
 }
 
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm animate-pulse">
+      <div className="flex items-center justify-between mb-3">
+        <div className="h-4 bg-gray-200 rounded w-24" />
+        <div className="w-8 h-8 bg-gray-200 rounded-lg" />
+      </div>
+      <div className="h-8 bg-gray-200 rounded w-16" />
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
-  const [hotelId, setHotelId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setError('Usuário não autenticado')
+          setLoading(false)
+          return
+        }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('hotel_id')
-        .eq('id', user.id)
-        .single()
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('hotel_id')
+          .eq('id', user.id)
+          .single()
 
-      if (!profile?.hotel_id) return
-      setHotelId(profile.hotel_id)
+        if (!profile?.hotel_id) {
+          setError('Perfil sem hotel associado')
+          setLoading(false)
+          return
+        }
 
-      const { data } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('hotel_id', profile.hotel_id)
-        .order('created_at', { ascending: false })
+        const { data, error: fetchError } = await supabase
+          .from('leads')
+          .select('*')
+          .eq('hotel_id', profile.hotel_id)
+          .order('created_at', { ascending: false })
 
-      setLeads((data as Lead[]) || [])
-      setLoading(false)
+        if (fetchError) throw fetchError
+        setLeads((data as Lead[]) || [])
+      } catch (e) {
+        setError('Erro ao carregar métricas')
+        console.error(e)
+      } finally {
+        setLoading(false)
+      }
     }
 
     load()
@@ -83,26 +109,50 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-gray-400">Carregando métricas...</p>
+      <div className="p-4 sm:p-6 space-y-6">
+        <div>
+          <div className="h-6 bg-gray-200 rounded w-32 animate-pulse" />
+          <div className="h-4 bg-gray-200 rounded w-52 mt-2 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3">
+        <p className="text-gray-500 text-sm">{error}</p>
+        <button
+          onClick={() => { setLoading(true); setError(null) }}
+          className="text-sm text-violet-600 hover:underline"
+        >
+          Tentar novamente
+        </button>
       </div>
     )
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Visão Geral</h1>
+        <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Visão Geral</h1>
         <p className="text-sm text-gray-500 mt-0.5">Métricas de atendimento e conversão</p>
       </div>
 
       {/* Métricas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <MetricCard label="Total de leads" value={metrics.total} icon={MessageSquare} color="bg-violet-500" />
-        <MetricCard label="Reservas confirmadas" value={metrics.booked} icon={CheckCircle} color="bg-green-500" />
+        <MetricCard label="Reservas" value={metrics.booked} icon={CheckCircle} color="bg-green-500" />
         <MetricCard label="Em andamento" value={metrics.inProgress} icon={Clock} color="bg-yellow-500" />
         <MetricCard
-          label="Taxa de conversão"
+          label="Conversão"
           value={`${metrics.conversionRate}%`}
           icon={TrendingUp}
           color="bg-purple-500"
@@ -110,47 +160,51 @@ export default function DashboardPage() {
       </div>
 
       {/* IA vs Humano */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <Bot className="w-5 h-5 text-violet-500" />
-            <h3 className="font-medium text-gray-900">Atendidos pelo Agente</h3>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3">
+            <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500 flex-shrink-0" />
+            <h3 className="font-medium text-gray-900 text-sm sm:text-base leading-tight">Atendidos pelo Agente</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{metrics.botHandled}</p>
-          <p className="text-sm text-gray-500 mt-1">leads com agente ativo</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{metrics.botHandled}</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">leads com agente ativo</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <User className="w-5 h-5 text-orange-500" />
-            <h3 className="font-medium text-gray-900">Atendimento humano</h3>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3">
+            <User className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 flex-shrink-0" />
+            <h3 className="font-medium text-gray-900 text-sm sm:text-base leading-tight">Atendimento humano</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{metrics.humanHandled}</p>
-          <p className="text-sm text-gray-500 mt-1">leads com humano ativo</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{metrics.humanHandled}</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">leads com humano ativo</p>
         </div>
       </div>
 
       {/* Leads recentes */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
+        <div className="px-4 sm:px-5 py-4 border-b border-gray-100">
           <h3 className="font-medium text-gray-900">Leads recentes</h3>
         </div>
         <div className="divide-y divide-gray-50">
           {recentLeads.length === 0 && (
-            <p className="text-sm text-gray-400 px-5 py-8 text-center">Nenhum lead ainda</p>
+            <div className="flex flex-col items-center py-12 text-gray-400 gap-2">
+              <MessageSquare className="w-8 h-8 opacity-30" />
+              <p className="text-sm">Nenhum lead ainda</p>
+              <p className="text-xs">Os leads aparecerão aqui quando chegarem mensagens via WhatsApp</p>
+            </div>
           )}
           {recentLeads.map(lead => (
-            <div key={lead.id} className="px-5 py-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{lead.guest_name || lead.guest_phone}</p>
-                <p className="text-xs text-gray-400">{lead.guest_phone}</p>
+            <div key={lead.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{lead.guest_name || lead.guest_phone}</p>
+                <p className="text-xs text-gray-400 truncate">{lead.guest_phone}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {lead.bot_enabled
                   ? <Bot className="w-3.5 h-3.5 text-violet-500" />
                   : <User className="w-3.5 h-3.5 text-orange-500" />
                 }
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium hidden sm:inline ${
                   lead.stage === 'booked' ? 'bg-green-100 text-green-700' :
                   lead.stage === 'not_converted' ? 'bg-red-100 text-red-700' :
                   'bg-violet-100 text-violet-700'
@@ -165,3 +219,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+

@@ -7,11 +7,14 @@ import { ChatPanel } from '@/components/dashboard/ChatPanel'
 import { LeadContextPanel } from '@/components/dashboard/LeadContextPanel'
 import type { Lead, Message } from '@/lib/types/database'
 
+type MobileView = 'inbox' | 'chat' | 'context'
+
 export default function AtendimentoPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [loadingLeads, setLoadingLeads] = useState(true)
+  const [mobileView, setMobileView] = useState<MobileView>('inbox')
 
   const fetchLeads = useCallback(async () => {
     const res = await fetch('/api/leads')
@@ -57,6 +60,7 @@ export default function AtendimentoPage() {
   async function handleSelectLead(lead: Lead) {
     setSelectedLead(lead)
     setMessages([])
+    setMobileView('chat')
     await fetchMessages(lead.id)
   }
 
@@ -82,21 +86,33 @@ export default function AtendimentoPage() {
   }
 
   return (
-    <div className="flex h-full">
-      <InboxPanel leads={leads} selectedId={selectedLead?.id || null} onSelect={handleSelectLead} />
+    <div className="flex h-full overflow-hidden">
+      {/* InboxPanel: full width on mobile when view=inbox, fixed width on desktop */}
+      <div className={`${mobileView === 'inbox' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-80 shrink-0`}>
+        <InboxPanel leads={leads} selectedId={selectedLead?.id || null} onSelect={handleSelectLead} />
+      </div>
 
       {selectedLead ? (
         <>
-          <ChatPanel
-            lead={selectedLead}
-            messages={messages}
-            onTakeover={handleTakeover}
-            onMessageSent={() => fetchMessages(selectedLead.id)}
-          />
-          <LeadContextPanel lead={selectedLead} />
+          {/* ChatPanel */}
+          <div className={`${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0`}>
+            <ChatPanel
+              lead={selectedLead}
+              messages={messages}
+              onTakeover={handleTakeover}
+              onMessageSent={() => fetchMessages(selectedLead.id)}
+              onBack={() => setMobileView('inbox')}
+              onInfo={() => setMobileView('context')}
+            />
+          </div>
+
+          {/* LeadContextPanel */}
+          <div className={`${mobileView === 'context' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-72 shrink-0`}>
+            <LeadContextPanel lead={selectedLead} onBack={() => setMobileView('chat')} />
+          </div>
         </>
       ) : (
-        <div className="flex-1 flex items-center justify-center bg-gray-50">
+        <div className="hidden md:flex flex-1 items-center justify-center bg-gray-50">
           <div className="text-center text-gray-400">
             <p className="text-lg font-medium mb-1">Selecione uma conversa</p>
             <p className="text-sm">Escolha um lead na lista à esquerda</p>
