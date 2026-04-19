@@ -230,8 +230,6 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
     </div>
   )
 }
-
-const STAGE_LABELS: Record<string, string> = {
   new_contact: 'Novo contato',
   in_attendance: 'Em atendimento',
   checking_availability: 'Consultando disponib.',

@@ -258,7 +258,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Métricas */
+      {/* Métricas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <MetricCard label="Total de leads" value={metrics.total} icon={MessageSquare} color="bg-violet-500" />
         <MetricCard label="Reservas" value={metrics.booked} icon={CheckCircle} color="bg-green-500" />

@@ -560,7 +560,6 @@ export default function ConfiguracoesPage() {
     </div>
   )
 }
-    enabled: true,
     hotel_name: '',
     hotel_description: '',
     system_prompt: '',

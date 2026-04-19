@@ -151,11 +151,6 @@ export function InboxPanel({ leads, selectedId, onSelect }: InboxPanelProps) {
   )
 }
 
-interface InboxPanelProps {
-  leads: Lead[]
-  selectedId: string | null
-  onSelect: (lead: Lead) => void
-}
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Ativa',
