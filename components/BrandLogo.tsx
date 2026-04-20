@@ -3,18 +3,15 @@ import Image from 'next/image'
 interface BrandLogoProps {
   className?: string
   priority?: boolean
-  variant?: 'full' | 'icon'
+  variant?: 'full' | 'mark'
 }
 
 export function BrandLogo({ className = '', priority = false, variant = 'full' }: BrandLogoProps) {
-  const frameClassName =
-    variant === 'icon'
-      ? 'relative h-full w-full overflow-hidden rounded-[inherit]'
-      : 'relative h-full w-full overflow-hidden'
+  const frameClassName = 'relative h-full w-full overflow-hidden rounded-[inherit]'
 
   const imageClassName =
-    variant === 'icon'
-      ? 'h-full w-full object-contain scale-[2.05] -translate-y-[18%] drop-shadow-[0_10px_22px_rgba(124,58,237,0.35)]'
+    variant === 'mark'
+      ? 'h-full w-full object-contain scale-[2.12] -translate-y-[18%] drop-shadow-[0_10px_22px_rgba(124,58,237,0.35)]'
       : 'h-full w-full object-contain scale-[1.58] translate-y-[2%] drop-shadow-[0_14px_32px_rgba(124,58,237,0.24)]'
 
   return (

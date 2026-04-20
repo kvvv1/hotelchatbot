@@ -105,25 +105,39 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
     >
       {/* Logo header */}
       <div className={`relative border-b border-slate-700/80 ${collapsed ? 'px-2 py-4' : 'px-4 py-5'}`}>
-        {!collapsed && (
-          <div className="pointer-events-none absolute inset-x-6 top-1/2 h-16 -translate-y-1/2 rounded-full bg-violet-500/12 blur-2xl" />
-        )}
         <Link
           href="/dashboard"
           onClick={onMobileClose}
           className={[
-            'relative block transition-all duration-300',
+            'group relative transition-all duration-300',
             collapsed
-              ? 'mx-auto rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 shadow-[0_16px_36px_-28px_rgba(124,58,237,0.95)] hover:border-violet-400/30 hover:bg-white/[0.07]'
-              : 'mx-auto rounded-[28px] border border-white/10 bg-white/[0.04] px-3 py-2 shadow-[0_22px_44px_-30px_rgba(124,58,237,0.95)] hover:border-violet-400/30 hover:bg-white/[0.07]',
+              ? 'mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] shadow-[0_16px_36px_-28px_rgba(124,58,237,0.95)] hover:border-violet-400/30 hover:bg-white/[0.07]'
+              : 'flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5 hover:border-violet-400/25 hover:bg-white/[0.05]',
           ].join(' ')}
           aria-label="HotelTalk"
         >
-          <BrandLogo
-            className={collapsed ? 'h-11 w-11' : 'h-24 w-24'}
-            priority
-            variant={collapsed ? 'icon' : 'full'}
-          />
+          <div className={[
+            'relative shrink-0 rounded-2xl ring-1 ring-white/10',
+            collapsed
+              ? 'flex h-10 w-10 items-center justify-center bg-transparent ring-0'
+              : 'flex h-14 w-14 items-center justify-center bg-white/[0.04] shadow-[0_18px_40px_-28px_rgba(124,58,237,0.95)]',
+          ].join(' ')}>
+            {!collapsed && (
+              <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_top,rgba(167,139,250,0.22),transparent_65%)]" />
+            )}
+            <BrandLogo
+              className={collapsed ? 'h-9 w-9' : 'h-11 w-11'}
+              priority
+              variant="mark"
+            />
+          </div>
+
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="text-[15px] font-semibold tracking-tight text-white">HotelTalk</p>
+              <p className="text-[11px] font-medium text-slate-400">Assistente hoteleiro com IA</p>
+            </div>
+          )}
         </Link>
         {/* Mobile: close (X) button */}
         <button
