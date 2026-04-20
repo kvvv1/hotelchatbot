@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessageSquare, Columns, BarChart2, Settings, LogOut, Hotel, Menu, X, Bell, CheckCheck, Info, Sparkles, BedDouble } from 'lucide-react'
+import { MessageSquare, Columns, BarChart2, Settings, LogOut, Menu, X, Bell, CheckCheck, Info, Sparkles, BedDouble } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
+import { BrandLogo } from '@/components/BrandLogo'
 
 const NAV_ITEMS = [
   { href: '/dashboard/atendimento', label: 'Atendimento', icon: MessageSquare },
@@ -103,11 +104,19 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       ].join(' ')}
     >
       {/* Logo header */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-700">
-        <Hotel className="w-6 h-6 text-violet-400 flex-shrink-0" />
-        <span className={`font-semibold text-lg whitespace-nowrap ${collapsed ? 'md:hidden' : ''}`}>
-          HotelTalk
-        </span>
+      <div className="flex items-start px-4 py-4 border-b border-slate-700">
+        <Link
+          href="/dashboard"
+          onClick={onMobileClose}
+          className={`block ${collapsed ? 'md:mx-auto' : ''}`}
+          aria-label="HotelTalk"
+        >
+          <BrandLogo
+            className={collapsed ? 'h-12 w-12' : 'h-20 w-20'}
+            priority
+            variant={collapsed ? 'icon' : 'full'}
+          />
+        </Link>
         {/* Mobile: close (X) button */}
         <button
           onClick={onMobileClose}

@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { Sidebar } from '@/components/dashboard/Sidebar'
-import { Menu, Hotel } from 'lucide-react'
+import { Menu } from 'lucide-react'
+import { BrandLogo } from '@/components/BrandLogo'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -31,7 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }`}
       >
         {/* Mobile top bar */}
-        <header className="md:hidden flex items-center gap-3 px-4 h-14 bg-slate-900 text-white shrink-0 z-10">
+        <header className="md:hidden flex items-center gap-3 px-4 h-16 bg-slate-900 text-white shrink-0 z-10">
           <button
             onClick={() => setMobileOpen(true)}
             className="p-1.5 rounded-md text-slate-400 hover:text-white"
@@ -39,8 +40,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <Menu className="w-5 h-5" />
           </button>
-          <Hotel className="w-5 h-5 text-violet-400" />
-          <span className="font-semibold text-base">HotelTalk</span>
+          <BrandLogo className="h-10 w-10" priority variant="icon" />
+          <span className="sr-only">HotelTalk</span>
         </header>
 
         <main className="flex-1 overflow-auto">

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { BedDouble, MessageSquare, LayoutGrid, Sparkles, Eye, EyeOff } from 'lucide-react'
+import { BrandLogo } from '@/components/BrandLogo'
 
 type Mode = 'login' | 'signup'
 type View = 'login' | 'forgot' | 'forgot-sent'
@@ -148,17 +149,9 @@ export default function LoginPage() {
                   <span className="text-[10px] font-semibold text-violet-700">Portal do hotel</span>
                 </div>
 
-                <div className="mt-2.5 flex items-center gap-2.5">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 shadow-lg shadow-violet-500/30">
-                    <BedDouble className="size-5 text-white" strokeWidth={2} />
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-bold tracking-tight">
-                      <span className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent">
-                        HotelTalk
-                      </span>
-                    </h1>
-                  </div>
+                <div className="mt-3">
+                  <BrandLogo className="h-24 w-24 sm:h-28 sm:w-28" priority />
+                  <h1 className="sr-only">HotelTalk</h1>
                 </div>
 
                 <p className="mt-1.5 text-xs font-medium text-neutral-700">

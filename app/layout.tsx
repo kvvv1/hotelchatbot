@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   title: "HotelTalk — Gestão de Leads",
   description: "Agente de IA e dashboard de atendimento hoteleiro",
   manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -38,4 +43,3 @@ export default function RootLayout({
     </html>
   );
 }
-
