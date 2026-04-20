@@ -104,15 +104,23 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       ].join(' ')}
     >
       {/* Logo header */}
-      <div className="flex items-start px-4 py-4 border-b border-slate-700">
+      <div className={`relative border-b border-slate-700/80 ${collapsed ? 'px-2 py-4' : 'px-4 py-5'}`}>
+        {!collapsed && (
+          <div className="pointer-events-none absolute inset-x-6 top-1/2 h-16 -translate-y-1/2 rounded-full bg-violet-500/12 blur-2xl" />
+        )}
         <Link
           href="/dashboard"
           onClick={onMobileClose}
-          className={`block ${collapsed ? 'md:mx-auto' : ''}`}
+          className={[
+            'relative block transition-all duration-300',
+            collapsed
+              ? 'mx-auto rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 shadow-[0_16px_36px_-28px_rgba(124,58,237,0.95)] hover:border-violet-400/30 hover:bg-white/[0.07]'
+              : 'mx-auto rounded-[28px] border border-white/10 bg-white/[0.04] px-3 py-2 shadow-[0_22px_44px_-30px_rgba(124,58,237,0.95)] hover:border-violet-400/30 hover:bg-white/[0.07]',
+          ].join(' ')}
           aria-label="HotelTalk"
         >
           <BrandLogo
-            className={collapsed ? 'h-12 w-12' : 'h-20 w-20'}
+            className={collapsed ? 'h-11 w-11' : 'h-24 w-24'}
             priority
             variant={collapsed ? 'icon' : 'full'}
           />
@@ -120,7 +128,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
         {/* Mobile: close (X) button */}
         <button
           onClick={onMobileClose}
-          className="md:hidden ml-auto p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="md:hidden absolute right-4 top-4 p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           aria-label="Fechar menu"
         >
           <X className="w-4 h-4" />

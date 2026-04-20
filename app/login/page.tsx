@@ -150,7 +150,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="mt-3">
-                  <BrandLogo className="h-24 w-24 sm:h-28 sm:w-28" priority />
+                  <BrandLogo className="h-28 w-28 sm:h-32 sm:w-32" priority />
                   <h1 className="sr-only">HotelTalk</h1>
                 </div>
 

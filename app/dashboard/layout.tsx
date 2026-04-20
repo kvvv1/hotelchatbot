@@ -40,7 +40,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <Menu className="w-5 h-5" />
           </button>
-          <BrandLogo className="h-10 w-10" priority variant="icon" />
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-1 shadow-[0_16px_36px_-28px_rgba(124,58,237,0.95)]">
+            <BrandLogo className="h-10 w-10" priority variant="icon" />
+          </div>
           <span className="sr-only">HotelTalk</span>
         </header>
 
