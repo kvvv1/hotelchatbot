@@ -28,6 +28,11 @@ interface HitsForm {
   hits_api_key: string
 }
 
+type TestState = {
+  status: 'idle' | 'testing' | 'ok' | 'warning' | 'error'
+  message?: string
+}
+
 interface DaySchedule {
   key: string
   active: boolean
@@ -72,11 +77,36 @@ const DEFAULT_DAYS: DaySchedule[] = WEEKDAYS.map(d => ({
   end: '18:00',
 }))
 
-function TestBadge({ status }: { status: 'idle' | 'testing' | 'ok' | 'error' }) {
-  if (status === 'idle') return null
-  if (status === 'testing') return <span className="flex items-center gap-1 text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin" /> Testando…</span>
-  if (status === 'ok') return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle className="w-3 h-3" /> Conectado!</span>
-  return <span className="flex items-center gap-1 text-xs text-red-600"><XCircle className="w-3 h-3" /> Falhou</span>
+function TestBadge({ state }: { state: TestState }) {
+  if (state.status === 'idle') return null
+  if (state.status === 'testing') {
+    return <span className="flex items-center gap-1 text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin" /> Testando…</span>
+  }
+
+  if (state.status === 'ok') {
+    return (
+      <div className="space-y-1">
+        <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle className="w-3 h-3" /> Conectado!</span>
+        {state.message && <p className="text-xs text-green-700">{state.message}</p>}
+      </div>
+    )
+  }
+
+  if (state.status === 'warning') {
+    return (
+      <div className="space-y-1">
+        <span className="flex items-center gap-1 text-xs text-amber-600"><AlertTriangle className="w-3 h-3" /> Atenção</span>
+        {state.message && <p className="text-xs text-amber-700">{state.message}</p>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-1">
+      <span className="flex items-center gap-1 text-xs text-red-600"><XCircle className="w-3 h-3" /> Falhou</span>
+      {state.message && <p className="text-xs text-red-700">{state.message}</p>}
+    </div>
+  )
 }
 
 export default function ConfiguracoesPage() {
@@ -103,8 +133,8 @@ export default function ConfiguracoesPage() {
   const [showHitsKey, setShowHitsKey] = useState(false)
   const [savingCreds, setSavingCreds] = useState(false)
   const [savedCreds, setSavedCreds] = useState(false)
-  const [testZapi, setTestZapi] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
-  const [testHits, setTestHits] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
+  const [testZapi, setTestZapi] = useState<TestState>({ status: 'idle' })
+  const [testHits, setTestHits] = useState<TestState>({ status: 'idle' })
 
   // Hours tab
   const [hoursEnabled, setHoursEnabled] = useState(false)
@@ -300,30 +330,51 @@ export default function ConfiguracoesPage() {
 
   async function handleTestZapi() {
     if (!zapiForm.zapi_instance_id || !zapiForm.zapi_token) return
-    setTestZapi('testing')
+    setTestZapi({ status: 'testing' })
     try {
       const res = await fetch('/api/health/zapi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(zapiForm),
       })
-      setTestZapi(res.ok ? 'ok' : 'error')
-    } catch { setTestZapi('error') }
-    setTimeout(() => setTestZapi('idle'), 6000)
+      const json = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setTestZapi({
+          status: 'error',
+          message: json.error || 'Não foi possível validar as credenciais da Z-API.',
+        })
+      } else if (json.connected) {
+        setTestZapi({
+          status: 'ok',
+          message: json.message || 'Instância conectada ao WhatsApp.',
+        })
+      } else {
+        setTestZapi({
+          status: 'warning',
+          message: json.message || 'As credenciais funcionam, mas a instância ainda não está conectada ao WhatsApp.',
+        })
+      }
+    } catch {
+      setTestZapi({ status: 'error', message: 'Erro de rede ao consultar a Z-API.' })
+    }
+    setTimeout(() => setTestZapi({ status: 'idle' }), 10000)
   }
 
   async function handleTestHits() {
     if (!hitsForm.hits_api_url || !hitsForm.hits_tenant_name) return
-    setTestHits('testing')
+    setTestHits({ status: 'testing' })
     try {
       const res = await fetch('/api/health/hits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(hitsForm),
       })
-      setTestHits(res.ok ? 'ok' : 'error')
-    } catch { setTestHits('error') }
-    setTimeout(() => setTestHits('idle'), 6000)
+      setTestHits(res.ok ? { status: 'ok' } : { status: 'error' })
+    } catch {
+      setTestHits({ status: 'error' })
+    }
+    setTimeout(() => setTestHits({ status: 'idle' }), 6000)
   }
 
   function updateDay(key: string, patch: Partial<DaySchedule>) {
@@ -454,7 +505,7 @@ export default function ConfiguracoesPage() {
                 <h3 className="font-medium text-gray-900">WhatsApp via Z-API</h3>
               </div>
               {zapiForm.zapi_instance_id && zapiForm.zapi_token ? (
-                <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-medium">Configurado</span>
+                <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-medium">Preenchido</span>
               ) : (
                 <span className="text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full font-medium">Não configurado</span>
               )}
@@ -485,7 +536,7 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Client Token <span className="text-gray-400 font-normal">(opcional)</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Client Token <span className="text-gray-400 font-normal">(obrigatório se o Security Token estiver ativo)</span></label>
               <input type="password" value={zapiForm.zapi_client_token}
                 onChange={e => setZapiForm(f => ({ ...f, zapi_client_token: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-violet-500"
@@ -493,11 +544,11 @@ export default function ConfiguracoesPage() {
             </div>
             <div className="flex items-center gap-3">
               <button type="button" onClick={handleTestZapi}
-                disabled={!zapiForm.zapi_instance_id || !zapiForm.zapi_token || testZapi === 'testing'}
+                disabled={!zapiForm.zapi_instance_id || !zapiForm.zapi_token || testZapi.status === 'testing'}
                 className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
                 Testar conexão
               </button>
-              <TestBadge status={testZapi} />
+              <TestBadge state={testZapi} />
             </div>
           </div>
 
@@ -564,11 +615,11 @@ export default function ConfiguracoesPage() {
             </div>
             <div className="flex items-center gap-3">
               <button type="button" onClick={handleTestHits}
-                disabled={!hitsForm.hits_api_url || !hitsForm.hits_tenant_name || testHits === 'testing'}
+                disabled={!hitsForm.hits_api_url || !hitsForm.hits_tenant_name || testHits.status === 'testing'}
                 className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
                 Testar credenciais
               </button>
-              <TestBadge status={testHits} />
+              <TestBadge state={testHits} />
             </div>
           </div>
 
