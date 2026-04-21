@@ -133,6 +133,7 @@ export default function ConfiguracoesPage() {
   const [showHitsKey, setShowHitsKey] = useState(false)
   const [savingCreds, setSavingCreds] = useState(false)
   const [savedCreds, setSavedCreds] = useState(false)
+  const [saveCredsError, setSaveCredsError] = useState<string | null>(null)
   const [testZapi, setTestZapi] = useState<TestState>({ status: 'idle' })
   const [testHits, setTestHits] = useState<TestState>({ status: 'idle' })
 
@@ -240,18 +241,46 @@ export default function ConfiguracoesPage() {
     e.preventDefault()
     if (!hotelId) return
     setSavingCreds(true)
-    const supabase = createClient()
-    await supabase.from('hotels').update({
-      ...zapiForm,
-      hits_api_url: hitsForm.hits_api_url || null,
-      hits_tenant_name: hitsForm.hits_tenant_name || null,
-      hits_property_code: hitsForm.hits_property_code ? parseInt(hitsForm.hits_property_code) : null,
-      hits_client_id: hitsForm.hits_client_id || null,
-      hits_api_key: hitsForm.hits_api_key || null,
-    }).eq('id', hotelId)
-    setSavingCreds(false)
-    setSavedCreds(true)
-    setTimeout(() => setSavedCreds(false), 2500)
+    setSaveCredsError(null)
+    try {
+      const res = await fetch('/api/hotel/integrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...zapiForm,
+          ...hitsForm,
+        }),
+      })
+
+      const json = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setSaveCredsError(json.error || 'Não foi possível salvar as credenciais.')
+        return
+      }
+
+      if (json.hotel) {
+        setZapiForm({
+          zapi_instance_id: json.hotel.zapi_instance_id || '',
+          zapi_token: json.hotel.zapi_token || '',
+          zapi_client_token: json.hotel.zapi_client_token || '',
+        })
+        setHitsForm({
+          hits_api_url: json.hotel.hits_api_url || '',
+          hits_tenant_name: json.hotel.hits_tenant_name || '',
+          hits_property_code: json.hotel.hits_property_code?.toString() || '',
+          hits_client_id: json.hotel.hits_client_id || '',
+          hits_api_key: json.hotel.hits_api_key || '',
+        })
+      }
+
+      setSavedCreds(true)
+      setTimeout(() => setSavedCreds(false), 2500)
+    } catch {
+      setSaveCredsError('Erro de rede ao salvar as credenciais.')
+    } finally {
+      setSavingCreds(false)
+    }
   }
 
   async function handleSaveHours(e: React.FormEvent) {
@@ -627,6 +656,13 @@ export default function ConfiguracoesPage() {
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <span>As credenciais são armazenadas com segurança e usadas apenas para consultas de disponibilidade e tarifas.</span>
           </div>
+
+          {saveCredsError && (
+            <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+              <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{saveCredsError}</span>
+            </div>
+          )}
 
           <button type="submit" disabled={savingCreds}
             className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white font-medium rounded-lg text-sm transition-colors">
