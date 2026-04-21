@@ -108,36 +108,14 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
         <Link
           href="/dashboard"
           onClick={onMobileClose}
-          className={[
-            'group relative transition-all duration-300',
-            collapsed
-              ? 'mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] shadow-[0_16px_36px_-28px_rgba(124,58,237,0.95)] hover:border-violet-400/30 hover:bg-white/[0.07]'
-              : 'flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5 hover:border-violet-400/25 hover:bg-white/[0.05]',
-          ].join(' ')}
+          className={`block ${collapsed ? 'mx-auto' : ''}`}
           aria-label="HotelTalk"
         >
-          <div className={[
-            'relative shrink-0 rounded-2xl ring-1 ring-white/10',
-            collapsed
-              ? 'flex h-10 w-10 items-center justify-center bg-transparent ring-0'
-              : 'flex h-14 w-14 items-center justify-center bg-white/[0.04] shadow-[0_18px_40px_-28px_rgba(124,58,237,0.95)]',
-          ].join(' ')}>
-            {!collapsed && (
-              <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_top,rgba(167,139,250,0.22),transparent_65%)]" />
-            )}
-            <BrandLogo
-              className={collapsed ? 'h-9 w-9' : 'h-11 w-11'}
-              priority
-              variant="mark"
-            />
-          </div>
-
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="text-[15px] font-semibold tracking-tight text-white">HotelTalk</p>
-              <p className="text-[11px] font-medium text-slate-400">Assistente hoteleiro com IA</p>
-            </div>
-          )}
+          <BrandLogo
+            className={collapsed ? 'h-10 w-10' : 'h-16 w-16'}
+            priority
+            variant="mark"
+          />
         </Link>
         {/* Mobile: close (X) button */}
         <button
