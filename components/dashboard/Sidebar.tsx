@@ -104,15 +104,23 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       ].join(' ')}
     >
       {/* Logo header */}
-      <div className={`relative border-b border-slate-700/80 ${collapsed ? 'px-2 py-4' : 'px-4 py-5'}`}>
+      <div
+        className={[
+          'relative flex items-center justify-center border-b border-slate-700/80',
+          collapsed ? 'min-h-[88px] px-2 py-4' : 'min-h-[120px] px-4 py-6',
+        ].join(' ')}
+      >
         <Link
           href="/dashboard"
           onClick={onMobileClose}
-          className={`block ${collapsed ? 'mx-auto' : ''}`}
+          className={[
+            'mx-auto flex items-center justify-center',
+            collapsed ? 'h-12 w-12' : 'h-24 w-full max-w-[160px]',
+          ].join(' ')}
           aria-label="HotelTalk"
         >
           <BrandLogo
-            className={collapsed ? 'h-10 w-10' : 'h-16 w-16'}
+            className={collapsed ? 'h-12 w-12' : 'h-20 w-20'}
             priority
             variant="mark"
           />
