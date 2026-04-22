@@ -107,7 +107,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       <div
         className={[
           'relative flex items-center justify-center border-b border-slate-700/80',
-          collapsed ? 'min-h-[88px] px-2 py-4' : 'min-h-[120px] px-4 py-6',
+          collapsed ? 'min-h-[72px] px-2 py-3' : 'min-h-[92px] px-4 py-4',
         ].join(' ')}
       >
         <Link
@@ -115,12 +115,12 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           onClick={onMobileClose}
           className={[
             'mx-auto flex items-center justify-center',
-            collapsed ? 'h-10 w-10' : 'h-20 w-full max-w-[144px]',
+            collapsed ? 'h-9 w-9' : 'h-16 w-full max-w-[132px]',
           ].join(' ')}
           aria-label="HotelTalk"
         >
           <BrandLogo
-            className={collapsed ? 'h-10 w-10' : 'h-16 w-16'}
+            className={collapsed ? 'h-9 w-9' : 'h-14 w-14'}
             priority
             variant="mark"
           />
@@ -136,7 +136,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-4 px-2 space-y-1">
+      <nav className="flex-1 py-3 px-2 space-y-1">
         {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href)
           return (
