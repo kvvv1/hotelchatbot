@@ -3,7 +3,21 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { MessageSquare, CheckCircle, Clock, TrendingUp, Bot, User, AlertTriangle, Columns, ArrowRight } from 'lucide-react'
+import {
+  MessageSquare,
+  CheckCircle,
+  Clock,
+  TrendingUp,
+  Bot,
+  User,
+  AlertTriangle,
+  Columns,
+  ArrowRight,
+  TimerReset,
+  Handshake,
+  CalendarDays,
+  Sparkles,
+} from 'lucide-react'
 import type { Lead } from '@/lib/types/database'
 
 interface Metrics {
@@ -14,11 +28,23 @@ interface Metrics {
   conversionRate: number
   botHandled: number
   humanHandled: number
+  waitingGuest: number
+  waitingHuman: number
+  stale: number
+  newToday: number
+  hotLeads: number
 }
 
-function MetricCard({ label, value, icon: Icon, color }: {
+function MetricCard({
+  label,
+  value,
+  caption,
+  icon: Icon,
+  color,
+}: {
   label: string
   value: string | number
+  caption?: string
   icon: React.ElementType
   color: string
 }) {
@@ -31,6 +57,7 @@ function MetricCard({ label, value, icon: Icon, color }: {
         </div>
       </div>
       <p className="text-2xl font-bold text-gray-900">{value}</p>
+      {caption && <p className="text-xs text-gray-500 mt-1.5">{caption}</p>}
     </div>
   )
 }
@@ -43,7 +70,17 @@ function SkeletonCard() {
         <div className="w-8 h-8 bg-gray-200 rounded-lg" />
       </div>
       <div className="h-8 bg-gray-200 rounded w-16" />
+      <div className="h-3 bg-gray-100 rounded w-28 mt-2" />
     </div>
+  )
+}
+
+function isSameDay(dateValue: string, compareDate: Date): boolean {
+  const date = new Date(dateValue)
+  return (
+    date.getFullYear() === compareDate.getFullYear() &&
+    date.getMonth() === compareDate.getMonth() &&
+    date.getDate() === compareDate.getDate()
   )
 }
 
@@ -75,8 +112,8 @@ export default function DashboardPage() {
       } else {
         setCreateError(json.error || `Erro ${res.status} ao criar hotel`)
       }
-    } catch (err) {
-      setCreateError('Erro de conexão. Tente novamente.')
+    } catch {
+      setCreateError('Erro de conexao. Tente novamente.')
     } finally {
       setCreating(false)
     }
@@ -85,9 +122,12 @@ export default function DashboardPage() {
   async function load() {
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
       if (!user) {
-        setError('Usuário não autenticado')
+        setError('Usuario nao autenticado')
         setLoading(false)
         return
       }
@@ -99,7 +139,6 @@ export default function DashboardPage() {
         .single()
 
       if (!profile?.hotel_id) {
-        // Pre-fill from user metadata (full_name set during signup)
         const fullName = user.user_metadata?.full_name || ''
         if (fullName) setHotelName(fullName)
         setNoHotel(true)
@@ -116,7 +155,7 @@ export default function DashboardPage() {
       if (fetchError) throw fetchError
       setLeads((data as Lead[]) || [])
     } catch (e) {
-      setError('Erro ao carregar métricas')
+      setError('Erro ao carregar metricas')
       console.error(e)
     } finally {
       setLoading(false)
@@ -125,19 +164,34 @@ export default function DashboardPage() {
 
   useEffect(() => {
     load()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const now = new Date()
+  const staleLimitMs = 24 * 60 * 60 * 1000
+  const staleLeads = leads.filter(
+    lead =>
+      lead.last_message_at &&
+      Date.now() - new Date(lead.last_message_at).getTime() > staleLimitMs &&
+      lead.status !== 'closed'
+  )
 
   const metrics: Metrics = {
     total: leads.length,
-    booked: leads.filter(l => l.stage === 'booked').length,
-    inProgress: leads.filter(l => !['booked', 'not_converted', 'closed'].includes(l.status) && l.stage !== 'not_converted').length,
-    notConverted: leads.filter(l => l.stage === 'not_converted').length,
-    conversionRate: leads.length > 0
-      ? Math.round((leads.filter(l => l.stage === 'booked').length / leads.length) * 100)
-      : 0,
-    botHandled: leads.filter(l => l.bot_enabled).length,
-    humanHandled: leads.filter(l => !l.bot_enabled).length,
+    booked: leads.filter(lead => lead.stage === 'booked').length,
+    inProgress: leads.filter(
+      lead => !['booked', 'not_converted', 'closed'].includes(lead.status) && lead.stage !== 'not_converted'
+    ).length,
+    notConverted: leads.filter(lead => lead.stage === 'not_converted').length,
+    conversionRate:
+      leads.length > 0 ? Math.round((leads.filter(lead => lead.stage === 'booked').length / leads.length) * 100) : 0,
+    botHandled: leads.filter(lead => lead.bot_enabled).length,
+    humanHandled: leads.filter(lead => !lead.bot_enabled).length,
+    waitingGuest: leads.filter(lead => lead.status === 'waiting_guest').length,
+    waitingHuman: leads.filter(lead => ['waiting_human', 'human_active'].includes(lead.status)).length,
+    stale: staleLeads.length,
+    newToday: leads.filter(lead => isSameDay(lead.created_at, now)).length,
+    hotLeads: leads.filter(lead => ['proposal_sent', 'negotiating', 'booking_in_progress'].includes(lead.stage)).length,
   }
 
   const recentLeads = leads.slice(0, 8)
@@ -150,11 +204,9 @@ export default function DashboardPage() {
           <div className="h-4 bg-gray-200 rounded w-52 mt-2 animate-pulse" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <SkeletonCard />
-          <SkeletonCard />
+          {[...Array(8)].map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
       </div>
     )
@@ -165,7 +217,11 @@ export default function DashboardPage() {
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <p className="text-gray-500 text-sm">{error}</p>
         <button
-          onClick={() => { setLoading(true); setError(null); load() }}
+          onClick={() => {
+            setLoading(true)
+            setError(null)
+            load()
+          }}
           className="text-sm text-violet-600 hover:underline"
         >
           Tentar novamente
@@ -179,7 +235,7 @@ export default function DashboardPage() {
       <div className="flex flex-col items-center justify-center h-full gap-6 px-4">
         <div className="text-center">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">Configure seu hotel</h2>
-          <p className="text-sm text-gray-500">Sua conta ainda não tem um hotel associado. Informe o nome para começar.</p>
+          <p className="text-sm text-gray-500">Sua conta ainda nao tem um hotel associado. Informe o nome para comecar.</p>
         </div>
         <form onSubmit={createHotel} className="flex flex-col gap-3 w-full max-w-sm">
           <input
@@ -190,9 +246,7 @@ export default function DashboardPage() {
             className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
             required
           />
-          {createError && (
-            <p className="text-xs text-red-600 text-center font-medium">{createError}</p>
-          )}
+          {createError && <p className="text-xs text-red-600 text-center font-medium">{createError}</p>}
           <button
             type="submit"
             disabled={creating}
@@ -205,22 +259,15 @@ export default function DashboardPage() {
     )
   }
 
-  const staleLeads = leads.filter(l =>
-    l.last_message_at &&
-    Date.now() - new Date(l.last_message_at).getTime() > 24 * 60 * 60 * 1000 &&
-    l.status !== 'closed'
-  )
-
   return (
     <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Visão Geral</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Métricas de atendimento e conversão</p>
+          <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Visao Geral</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Operacao, atendimento e conversao em um painel de leitura rapida</p>
         </div>
       </div>
 
-      {/* Atalhos rápidos */}
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => router.push('/dashboard/atendimento')}
@@ -238,13 +285,12 @@ export default function DashboardPage() {
         >
           <div>
             <p className="font-semibold text-sm">Kanban</p>
-            <p className="text-xs text-gray-500 mt-0.5">Pipeline de leads</p>
+            <p className="text-xs text-gray-500 mt-0.5">Pipeline comercial</p>
           </div>
           <Columns className="w-4 h-4 flex-shrink-0 text-gray-400" />
         </button>
       </div>
 
-      {/* Alerta leads parados */}
       {staleLeads.length > 0 && (
         <div
           onClick={() => router.push('/dashboard/atendimento')}
@@ -252,89 +298,134 @@ export default function DashboardPage() {
         >
           <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
           <p className="text-sm text-amber-800 font-medium">
-            {staleLeads.length} lead{staleLeads.length > 1 ? 's' : ''} sem resposta há mais de 24h
+            {staleLeads.length} lead{staleLeads.length > 1 ? 's' : ''} sem resposta ha mais de 24h
           </p>
           <ArrowRight className="w-4 h-4 text-amber-500 ml-auto flex-shrink-0" />
         </div>
       )}
 
-      {/* Métricas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <MetricCard label="Total de leads" value={metrics.total} icon={MessageSquare} color="bg-violet-500" />
-        <MetricCard label="Reservas" value={metrics.booked} icon={CheckCircle} color="bg-green-500" />
-        <MetricCard label="Em andamento" value={metrics.inProgress} icon={Clock} color="bg-yellow-500" />
-        <MetricCard
-          label="Conversão"
-          value={`${metrics.conversionRate}%`}
-          icon={TrendingUp}
-          color="bg-purple-500"
-        />
+        <MetricCard label="Total de leads" value={metrics.total} caption="Base atual do funil" icon={MessageSquare} color="bg-violet-500" />
+        <MetricCard label="Reservas" value={metrics.booked} caption="Conversoes fechadas" icon={CheckCircle} color="bg-green-500" />
+        <MetricCard label="Em andamento" value={metrics.inProgress} caption="Leads ainda ativos" icon={Clock} color="bg-yellow-500" />
+        <MetricCard label="Conversao" value={`${metrics.conversionRate}%`} caption="Reserva sobre total" icon={TrendingUp} color="bg-purple-500" />
+        <MetricCard label="Novos hoje" value={metrics.newToday} caption="Entradas no dia" icon={CalendarDays} color="bg-sky-500" />
+        <MetricCard label="Leads quentes" value={metrics.hotLeads} caption="Em proposta ou fechamento" icon={Sparkles} color="bg-fuchsia-500" />
+        <MetricCard label="Aguardando cliente" value={metrics.waitingGuest} caption="Esperando resposta" icon={TimerReset} color="bg-indigo-500" />
+        <MetricCard label="Aguardando humano" value={metrics.waitingHuman} caption="Fila de apoio humano" icon={Handshake} color="bg-orange-500" />
       </div>
 
-      {/* IA vs Humano */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 mb-3">
             <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500 flex-shrink-0" />
-            <h3 className="font-medium text-gray-900 text-sm sm:text-base leading-tight">Atendidos pelo Agente</h3>
+            <h3 className="font-medium text-gray-900 text-sm sm:text-base leading-tight">Agente ativo</h3>
           </div>
           <p className="text-2xl sm:text-3xl font-bold text-gray-900">{metrics.botHandled}</p>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">leads com agente ativo</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">leads com IA conduzindo o atendimento</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 mb-3">
             <User className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 flex-shrink-0" />
-            <h3 className="font-medium text-gray-900 text-sm sm:text-base leading-tight">Atendimento humano</h3>
+            <h3 className="font-medium text-gray-900 text-sm sm:text-base leading-tight">Humano ativo</h3>
           </div>
           <p className="text-2xl sm:text-3xl font-bold text-gray-900">{metrics.humanHandled}</p>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">leads com humano ativo</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">casos com equipe humana no controle</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3">
+            <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
+            <h3 className="font-medium text-gray-900 text-sm sm:text-base leading-tight">Risco operacional</h3>
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{metrics.stale}</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">leads pedindo acao imediata da equipe</p>
         </div>
       </div>
 
-      {/* Leads recentes */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-4 sm:px-5 py-4 border-b border-gray-100">
-          <h3 className="font-medium text-gray-900">Leads recentes</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-4 sm:px-5 py-4 border-b border-gray-100">
+            <h3 className="font-medium text-gray-900">Leads recentes</h3>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {recentLeads.length === 0 && (
+              <div className="flex flex-col items-center py-12 text-gray-400 gap-2">
+                <MessageSquare className="w-8 h-8 opacity-30" />
+                <p className="text-sm">Nenhum lead ainda</p>
+                <p className="text-xs">Os leads aparecerao aqui quando chegarem mensagens via WhatsApp</p>
+              </div>
+            )}
+            {recentLeads.map(lead => (
+              <button
+                key={lead.id}
+                onClick={() => router.push(`/dashboard/atendimento?lead=${lead.id}`)}
+                className="w-full px-4 sm:px-5 py-3 flex items-center justify-between gap-2 hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{lead.guest_name || lead.guest_phone}</p>
+                  <p className="text-xs text-gray-400 truncate">{lead.guest_phone}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {lead.bot_enabled ? (
+                    <Bot className="w-3.5 h-3.5 text-violet-500" />
+                  ) : (
+                    <User className="w-3.5 h-3.5 text-orange-500" />
+                  )}
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium hidden sm:inline ${
+                      lead.stage === 'booked'
+                        ? 'bg-green-100 text-green-700'
+                        : lead.stage === 'not_converted'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-violet-100 text-violet-700'
+                    }`}
+                  >
+                    {lead.stage.replace(/_/g, ' ')}
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-300" />
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="divide-y divide-gray-50">
-          {recentLeads.length === 0 && (
-            <div className="flex flex-col items-center py-12 text-gray-400 gap-2">
-              <MessageSquare className="w-8 h-8 opacity-30" />
-              <p className="text-sm">Nenhum lead ainda</p>
-              <p className="text-xs">Os leads aparecerão aqui quando chegarem mensagens via WhatsApp</p>
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
+          <h3 className="font-medium text-gray-900">Pulso da operacao</h3>
+          <div className="space-y-3 mt-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">Prioridade comercial</span>
+              <span className="font-semibold text-gray-900">{metrics.hotLeads}</span>
             </div>
-          )}
-          {recentLeads.map(lead => (
-            <button
-              key={lead.id}
-              onClick={() => router.push(`/dashboard/atendimento?lead=${lead.id}`)}
-              className="w-full px-4 sm:px-5 py-3 flex items-center justify-between gap-2 hover:bg-gray-50 transition-colors text-left"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{lead.guest_name || lead.guest_phone}</p>
-                <p className="text-xs text-gray-400 truncate">{lead.guest_phone}</p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {lead.bot_enabled
-                  ? <Bot className="w-3.5 h-3.5 text-violet-500" />
-                  : <User className="w-3.5 h-3.5 text-orange-500" />
-                }
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium hidden sm:inline ${
-                  lead.stage === 'booked' ? 'bg-green-100 text-green-700' :
-                  lead.stage === 'not_converted' ? 'bg-red-100 text-red-700' :
-                  'bg-violet-100 text-violet-700'
-                }`}>
-                  {lead.stage.replace(/_/g, ' ')}
-                </span>
-                <ArrowRight className="w-3.5 h-3.5 text-gray-300" />
-              </div>
-            </button>
-          ))}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">Fila humana</span>
+              <span className="font-semibold text-gray-900">{metrics.waitingHuman}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">Perdidos</span>
+              <span className="font-semibold text-gray-900">{metrics.notConverted}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">Aguardando cliente</span>
+              <span className="font-semibold text-gray-900">{metrics.waitingGuest}</span>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-xl bg-slate-50 border border-slate-200 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Leitura rapida</p>
+            <p className="text-sm text-slate-700 mt-2 leading-relaxed">
+              {metrics.hotLeads > 0
+                ? `Ha ${metrics.hotLeads} oportunidade${metrics.hotLeads > 1 ? 's' : ''} quente${metrics.hotLeads > 1 ? 's' : ''} no funil agora.`
+                : 'O funil esta sem leads quentes neste momento.'}{' '}
+              {metrics.stale > 0
+                ? `Tambem existem ${metrics.stale} caso${metrics.stale > 1 ? 's' : ''} que merecem acao imediata.`
+                : 'Nao ha casos parados ha mais de 24h.'}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Leads por dia — últimos 7 dias */}
       <LeadsChart leads={leads} />
     </div>
   )
@@ -342,30 +433,29 @@ export default function DashboardPage() {
 
 function LeadsChart({ leads }: { leads: Lead[] }) {
   const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
-    d.setHours(0, 0, 0, 0)
-    return d
+    const date = new Date()
+    date.setDate(date.getDate() - (6 - i))
+    date.setHours(0, 0, 0, 0)
+    return date
   })
 
   const counts = days.map(day => {
     const next = new Date(day)
     next.setDate(next.getDate() + 1)
-    return leads.filter(l => {
-      const t = new Date(l.created_at).getTime()
-      return t >= day.getTime() && t < next.getTime()
+    return leads.filter(lead => {
+      const time = new Date(lead.created_at).getTime()
+      return time >= day.getTime() && time < next.getTime()
     }).length
   })
 
   const max = Math.max(...counts, 1)
-
-  const dayLabels = days.map(d =>
-    d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+  const dayLabels = days.map(date =>
+    date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
   )
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
-      <h3 className="font-medium text-gray-900 mb-4">Novos leads — últimos 7 dias</h3>
+      <h3 className="font-medium text-gray-900 mb-4">Novos leads - ultimos 7 dias</h3>
       <div className="flex items-end gap-2 h-28">
         {counts.map((count, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-1">
@@ -383,4 +473,3 @@ function LeadsChart({ leads }: { leads: Lead[] }) {
     </div>
   )
 }
-
