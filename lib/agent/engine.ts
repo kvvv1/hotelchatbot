@@ -9,8 +9,9 @@ import type { ChatCompletionMessageParam } from 'openai/resources/chat/completio
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildSystemPrompt, buildMessagesContext } from './prompts'
 import { AGENT_TOOLS, executeTool, type ToolExecutionContext } from './tools'
-import { toggleBotEnabled, updateStage, updateLead } from '@/lib/leads/service'
+import { toggleBotEnabled, updateStage } from '@/lib/leads/service'
 import type { Lead, BotSettings, Message } from '@/lib/types/database'
+import type { ManualInventorySnapshot } from '@/lib/manual-inventory'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -46,7 +47,7 @@ export async function processMessage(
   // Buscar credenciais HITS PMS completas do hotel
   const { data: hotelData } = await supabase
     .from('hotels')
-    .select('hits_api_url, hits_api_key, hits_tenant_name, hits_property_code, hits_client_id, zapi_instance_id, zapi_token, zapi_client_token')
+    .select('hits_api_url, hits_api_key, hits_tenant_name, hits_property_code, hits_client_id, zapi_instance_id, zapi_token, zapi_client_token, manual_inventory_snapshot')
     .eq('id', lead.hotel_id)
     .single()
 
@@ -72,6 +73,8 @@ export async function processMessage(
           clientToken: (hotelData.zapi_client_token as string) || undefined,
         }
       : undefined
+
+  const manualInventorySnapshot = (hotelData?.manual_inventory_snapshot || null) as ManualInventorySnapshot | null
 
   // Buscar histórico de mensagens
   const { data: messagesData } = await supabase
@@ -107,7 +110,15 @@ export async function processMessage(
     { role: 'user', content: incomingText },
   ]
 
-  const toolCtx: ToolExecutionContext = { leadId: lead.id, hotelId: lead.hotel_id, hitsCredentials, zapiCredentials, guestPhone: lead.guest_phone, transferRequested: false }
+  const toolCtx: ToolExecutionContext = {
+    leadId: lead.id,
+    hotelId: lead.hotel_id,
+    hitsCredentials,
+    manualInventorySnapshot,
+    zapiCredentials,
+    guestPhone: lead.guest_phone,
+    transferRequested: false,
+  }
 
   // Loop de tool calling
   let iterations = 0

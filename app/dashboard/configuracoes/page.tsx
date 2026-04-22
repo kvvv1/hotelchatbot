@@ -308,19 +308,28 @@ export default function ConfiguracoesPage() {
     setUploading(true)
     setUploadError(null)
     try {
-      const supabase = createClient()
-      const ext = file.name.split('.').pop() || 'jpg'
-      const path = `${hotelId}/${uploadCategory}/${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage.from('hotel-media').upload(path, file, { upsert: false })
-      if (upErr) throw new Error(upErr.message)
-      const { data: { publicUrl } } = supabase.storage.from('hotel-media').getPublicUrl(path)
-      const { data: inserted, error: insErr } = await supabase
-        .from('hotel_media')
-        .insert({ hotel_id: hotelId, url: publicUrl, storage_path: path, category: uploadCategory, caption: uploadCaption || null })
-        .select('*')
-        .single()
-      if (insErr) throw new Error(insErr.message)
-      setMedia(prev => [inserted as MediaItem, ...prev])
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('category', uploadCategory)
+      if (uploadCaption.trim()) {
+        formData.append('caption', uploadCaption.trim())
+      }
+
+      const res = await fetch('/api/hotel/media', {
+        method: 'POST',
+        body: formData,
+      })
+      const json = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        throw new Error(json.error || 'Erro ao enviar foto')
+      }
+
+      if (!json.item) {
+        throw new Error('Resposta invalida ao enviar foto')
+      }
+
+      setMedia(prev => [json.item as MediaItem, ...prev])
       setUploadCaption('')
       e.target.value = ''
     } catch (err) {
@@ -331,12 +340,23 @@ export default function ConfiguracoesPage() {
   }
 
   async function handleDeletePhoto(item: MediaItem) {
-    const supabase = createClient()
-    if (item.storage_path) {
-      await supabase.storage.from('hotel-media').remove([item.storage_path])
+    setUploadError(null)
+    try {
+      const res = await fetch('/api/hotel/media', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id }),
+      })
+      const json = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        throw new Error(json.error || 'Erro ao excluir foto')
+      }
+
+      setMedia(prev => prev.filter(m => m.id !== item.id))
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Erro ao excluir foto')
     }
-    await supabase.from('hotel_media').delete().eq('id', item.id)
-    setMedia(prev => prev.filter(m => m.id !== item.id))
   }
 
   async function handleSaveTemplates(e: React.FormEvent) {

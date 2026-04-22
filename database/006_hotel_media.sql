@@ -36,7 +36,16 @@ ALTER TABLE bot_settings
   ADD COLUMN IF NOT EXISTS quick_templates JSONB NOT NULL DEFAULT '[]';
 
 -- ================================================================
--- Supabase Storage: crie o bucket "hotel-media" no dashboard
--- com política pública de leitura (Public bucket) para que as
--- URLs funcionem no WhatsApp sem autenticação.
+-- Supabase Storage bucket para a galeria do hotel.
+-- Mantemos o bucket publico para que as URLs possam ser abertas
+-- no WhatsApp sem autenticacao.
 -- ================================================================
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('hotel-media', 'hotel-media', true)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name,
+    public = EXCLUDED.public;
+
+-- Os uploads/remocoes rodam por API server-side com service role,
+-- entao nao precisamos de policies de escrita em storage.objects.

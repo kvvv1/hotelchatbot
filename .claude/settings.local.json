@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:api.hitspms.net)",
       "Bash(/c/Users/KV/AppData/Roaming/nvm/v22.14.0/npx.cmd tsc *)",
-      "Bash(cmd.exe /c \"npx tsc --noEmit\")"
+      "Bash(cmd.exe /c \"npx tsc --noEmit\")",
+      "WebSearch"
     ]
   }
 }

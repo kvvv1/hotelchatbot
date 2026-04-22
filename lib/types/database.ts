@@ -1,3 +1,5 @@
+import type { ManualInventorySnapshot } from '@/lib/manual-inventory'
+
 // ============================================================
 // Tipos TypeScript do schema do banco de dados
 // ============================================================
@@ -52,6 +54,9 @@ export interface Hotel {
   zapi_instance_id: string | null
   zapi_token: string | null
   zapi_client_token: string | null
+  manual_inventory_snapshot?: ManualInventorySnapshot | null
+  manual_inventory_updated_at?: string | null
+  manual_inventory_source?: string | null
   created_at: string
 }
 
