@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'HotelTalk',
     short_name: 'HotelTalk',
-    description: 'Agente de IA e dashboard de atendimento hoteleiro',
+    description: 'Sistema de IA, atendimento e gestao hoteleira',
     start_url: '/dashboard',
     display: 'standalone',
     background_color: '#0f172a',
@@ -13,13 +13,13 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['productivity', 'business'],
     icons: [
       {
-        src: '/logo.png',
-        sizes: '1024x1024',
+        src: '/icon?v=2',
+        sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/logo.png',
+        src: '/apple-icon?v=2',
         sizes: '180x180',
         type: 'image/png',
         purpose: 'maskable',

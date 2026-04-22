@@ -14,13 +14,13 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: "HotelTalk — Gestão de Leads",
-  description: "Agente de IA e dashboard de atendimento hoteleiro",
+  title: "HotelTalk - Sistema de IA e Gestao Hoteleira",
+  description: "Agente, atendimento e gestao hoteleira em um so sistema",
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/logo.png',
-    shortcut: '/logo.png',
-    apple: '/logo.png',
+    icon: '/icon?v=2',
+    shortcut: '/icon?v=2',
+    apple: '/apple-icon?v=2',
   },
   appleWebApp: {
     capable: true,
