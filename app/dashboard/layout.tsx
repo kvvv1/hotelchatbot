@@ -40,7 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <Menu className="w-5 h-5" />
           </button>
-          <BrandLogo className="h-10 w-10" priority variant="mark" />
+          <BrandLogo className="h-9 w-9" priority variant="mark" />
         </header>
 
         <main className="flex-1 overflow-auto">

@@ -1,31 +1,39 @@
+import { readFile } from 'fs/promises'
+import path from 'path'
 import { ImageResponse } from 'next/og'
 
 export const size = { width: 180, height: 180 }
 export const contentType = 'image/png'
 
-export default function AppleIcon() {
+async function getLogoDataUrl() {
+  const logoPath = path.join(process.cwd(), 'public', 'logo.png')
+  const logoBuffer = await readFile(logoPath)
+  return `data:image/png;base64,${logoBuffer.toString('base64')}`
+}
+
+export default async function AppleIcon() {
+  const logoSrc = await getLogoDataUrl()
+
   return new ImageResponse(
     <div
       style={{
         width: '100%',
         height: '100%',
-        background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+        background: '#ffffff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <span
+      <img
+        src={logoSrc}
+        alt="HotelTalk"
+        width="132"
+        height="132"
         style={{
-          color: 'white',
-          fontSize: '110px',
-          fontWeight: 800,
-          fontFamily: 'sans-serif',
-          lineHeight: 1,
+          objectFit: 'contain',
         }}
-      >
-        H
-      </span>
+      />
     </div>,
     { ...size }
   )

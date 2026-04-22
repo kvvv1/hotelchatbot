@@ -115,12 +115,12 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           onClick={onMobileClose}
           className={[
             'mx-auto flex items-center justify-center',
-            collapsed ? 'h-12 w-12' : 'h-24 w-full max-w-[160px]',
+            collapsed ? 'h-10 w-10' : 'h-20 w-full max-w-[144px]',
           ].join(' ')}
           aria-label="HotelTalk"
         >
           <BrandLogo
-            className={collapsed ? 'h-12 w-12' : 'h-20 w-20'}
+            className={collapsed ? 'h-10 w-10' : 'h-16 w-16'}
             priority
             variant="mark"
           />

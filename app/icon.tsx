@@ -1,32 +1,40 @@
+import { readFile } from 'fs/promises'
+import path from 'path'
 import { ImageResponse } from 'next/og'
 
 export const size = { width: 512, height: 512 }
 export const contentType = 'image/png'
 
-export default function Icon() {
+async function getLogoDataUrl() {
+  const logoPath = path.join(process.cwd(), 'public', 'logo.png')
+  const logoBuffer = await readFile(logoPath)
+  return `data:image/png;base64,${logoBuffer.toString('base64')}`
+}
+
+export default async function Icon() {
+  const logoSrc = await getLogoDataUrl()
+
   return new ImageResponse(
     <div
       style={{
         width: '100%',
         height: '100%',
-        background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+        background: '#ffffff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: '96px',
+        borderRadius: '112px',
       }}
     >
-      <span
+      <img
+        src={logoSrc}
+        alt="HotelTalk"
+        width="380"
+        height="380"
         style={{
-          color: 'white',
-          fontSize: '300px',
-          fontWeight: 800,
-          fontFamily: 'sans-serif',
-          lineHeight: 1,
+          objectFit: 'contain',
         }}
-      >
-        H
-      </span>
+      />
     </div>,
     { ...size }
   )
