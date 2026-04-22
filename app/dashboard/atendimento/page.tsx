@@ -36,7 +36,6 @@ export default function AtendimentoPage() {
     fetchLeads()
   }, [fetchLeads])
 
-  // Realtime: atualizar leads e mensagens
   useEffect(() => {
     const supabase = createClient()
 
@@ -54,7 +53,9 @@ export default function AtendimentoPage() {
       })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [selectedLead, fetchLeads, fetchMessages])
 
   async function handleSelectLead(lead: Lead) {
@@ -87,14 +88,12 @@ export default function AtendimentoPage() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* InboxPanel: full width on mobile when view=inbox, fixed width on desktop */}
       <div className={`${mobileView === 'inbox' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-80 shrink-0`}>
         <InboxPanel leads={leads} selectedId={selectedLead?.id || null} onSelect={handleSelectLead} />
       </div>
 
       {selectedLead ? (
         <>
-          {/* ChatPanel */}
           <div className={`${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0`}>
             <ChatPanel
               lead={selectedLead}
@@ -106,7 +105,6 @@ export default function AtendimentoPage() {
             />
           </div>
 
-          {/* LeadContextPanel */}
           <div className={`${mobileView === 'context' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-72 shrink-0`}>
             <LeadContextPanel
               lead={selectedLead}
@@ -116,7 +114,7 @@ export default function AtendimentoPage() {
                 setSelectedLead(null)
                 setMobileView('inbox')
               }}
-              onLeadUpdated={(updated) => setSelectedLead(updated)}
+              onLeadUpdated={updated => setSelectedLead(updated)}
             />
           </div>
         </>

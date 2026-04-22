@@ -82,11 +82,11 @@ function buildLeadSeed(hotelId, adminId) {
     {
       guest_phone: '5511991100101',
       guest_name: 'Juliana Castro',
-      status: 'waiting_guest',
-      stage: 'proposal_sent',
-      bot_enabled: true,
-      assigned_to: null,
-      notes: 'Casal buscando final de semana romantico com piscina e trilhas.',
+      status: 'human_active',
+      stage: 'booking_in_progress',
+      bot_enabled: false,
+      assigned_to: adminId,
+      notes: 'Caso de demonstração: IA qualificou e humano assumiu para fechamento.',
       tags: ['casal', 'fim_de_semana', 'alto_potencial'],
       context: {
         checkIn: '2026-05-15',
@@ -102,6 +102,8 @@ function buildLeadSeed(hotelId, adminId) {
         ['guest', 'De sexta a segunda, para 2 pessoas.', isoHoursAgo(2.1)],
         ['bot', 'Perfeito. Temos opção de Quarto Deluxe a partir de R$ 459 a diária, com ambiente bem gostoso para descanso e acesso à área de lazer, piscina e trilhas.', isoHoursAgo(1.8)],
         ['bot', 'Se quiser, já posso te adiantar mais fotos e deixar essa opção separada para você.', isoHoursAgo(1.5)],
+        ['guest', 'Gostei! Consigo fazer o pagamento de entrada agora e tirar uma dúvida sobre cancelamento?', isoHoursAgo(1.2)],
+        ['human', 'Oi, Juliana! Eu assumi seu atendimento por aqui para te explicar certinho as condições de pagamento e cancelamento. Se quiser, já seguimos com a sua pré-reserva.', isoHoursAgo(0.9)],
       ],
     },
     {
