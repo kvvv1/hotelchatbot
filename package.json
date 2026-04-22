@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:demo": "node scripts/seed-demo.mjs"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Bot, User, Loader2, Sparkles, TrendingUp, Users, AlertTriangle, BarChart2 } from 'lucide-react'
+import { Send, Bot, User, Loader2, Sparkles, TrendingUp, Users, BarChart2 } from 'lucide-react'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -9,17 +9,18 @@ interface Message {
 }
 
 const QUICK_PROMPTS = [
-  { icon: AlertTriangle, label: 'Leads sem resposta', prompt: 'Quais leads estão sem resposta há mais de 24h e o que devo fazer?' },
-  { icon: TrendingUp, label: 'Análise de conversão', prompt: 'Analise minha taxa de conversão e sugira melhorias.' },
-  { icon: Users, label: 'Leads para reativar', prompt: 'Quais leads devo reativar com uma campanha de WhatsApp agora?' },
-  { icon: BarChart2, label: 'Resumo do dia', prompt: 'Me dê um resumo rápido de como está o hotel hoje.' },
+  { icon: Bot, label: 'Status do agente', prompt: 'Me mostre o status atual do agente, pontos de atencao e o que ajustar para melhorar a operacao.' },
+  { icon: BarChart2, label: 'Resumo executivo', prompt: 'Me de um resumo executivo da operacao de hoje, incluindo reservas, leads em aberto e prioridades.' },
+  { icon: TrendingUp, label: 'Oportunidades', prompt: 'Quais sao hoje as melhores oportunidades de conversao e upsell no hotel?' },
+  { icon: Users, label: 'Acoes de gestao', prompt: 'Quais acoes praticas de gestao e atendimento voce recomenda para as proximas horas?' },
 ]
 
 export default function CopilotPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Olá! Sou o Copilot do HotelTalk 👋\n\nTenho acesso aos dados em tempo real do seu hotel — leads, métricas, status do agente e muito mais.\n\nComo posso ajudar você hoje?',
+      content:
+        'Ola! Posso te ajudar a acompanhar a operacao do hotel, entender o desempenho do agente, identificar prioridades do atendimento e sugerir acoes de gestao para aumentar a conversao.\n\nO que voce quer analisar primeiro?',
     },
   ])
   const [input, setInput] = useState('')
@@ -49,7 +50,7 @@ export default function CopilotPage() {
       const data = await res.json()
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply || 'Erro ao processar.' }])
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Erro de conexão. Tente novamente.' }])
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Erro de conexao. Tente novamente.' }])
     } finally {
       setLoading(false)
     }
@@ -79,12 +80,12 @@ export default function CopilotPage() {
 
     while (i < lines.length) {
       const line = lines[i]
-      // Bullet list
+
       if (/^[-•]\s/.test(line)) {
         const items: string[] = []
         while (i < lines.length && /^[-•]\s/.test(lines[i])) {
           items.push(lines[i].replace(/^[-•]\s/, ''))
-          i++
+          i += 1
         }
         elements.push(
           <ul key={`ul-${i}`} className="space-y-1 my-1">
@@ -98,12 +99,12 @@ export default function CopilotPage() {
         )
         continue
       }
-      // Numbered list
+
       if (/^\d+\.\s/.test(line)) {
         const items: string[] = []
         while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
           items.push(lines[i].replace(/^\d+\.\s/, ''))
-          i++
+          i += 1
         }
         elements.push(
           <ol key={`ol-${i}`} className="space-y-1 my-1 list-none">
@@ -117,17 +118,17 @@ export default function CopilotPage() {
         )
         continue
       }
-      // Empty line → spacer
+
       if (line.trim() === '') {
         elements.push(<div key={`sp-${i}`} className="h-2" />)
-        i++
+        i += 1
         continue
       }
-      // Regular paragraph
+
       elements.push(
         <p key={`p-${i}`} className="leading-relaxed">{renderInline(line)}</p>
       )
-      i++
+      i += 1
     }
 
     return elements
@@ -135,7 +136,6 @@ export default function CopilotPage() {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-md shadow-violet-200/50">
@@ -143,7 +143,7 @@ export default function CopilotPage() {
           </div>
           <div>
             <h1 className="font-semibold text-gray-900">Copilot IA</h1>
-            <p className="text-xs text-gray-500">Assistente de gestão hoteleira com dados em tempo real</p>
+            <p className="text-xs text-gray-500">Assistente de gestao hoteleira com foco em operacao, agente e conversao</p>
           </div>
           <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-200 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -152,7 +152,6 @@ export default function CopilotPage() {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -193,10 +192,9 @@ export default function CopilotPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick prompts — show only at start */}
       {messages.length <= 1 && (
         <div className="px-4 sm:px-6 pb-3">
-          <p className="text-xs text-gray-400 mb-2 font-medium">Sugestões rápidas</p>
+          <p className="text-xs text-gray-400 mb-2 font-medium">Sugestoes rapidas</p>
           <div className="grid grid-cols-2 gap-2">
             {QUICK_PROMPTS.map(({ icon: Icon, label, prompt }) => (
               <button
@@ -212,7 +210,6 @@ export default function CopilotPage() {
         </div>
       )}
 
-      {/* Input */}
       <div className="bg-white border-t border-gray-200 px-4 sm:px-6 py-3">
         <div className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-2.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-100 transition-all">
           <textarea
@@ -221,7 +218,7 @@ export default function CopilotPage() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Pergunte sobre seus leads, métricas, estratégias…"
+            placeholder="Pergunte sobre operacao, agente, reservas, atendimento ou gestao..."
             className="flex-1 resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none max-h-32 leading-relaxed"
             style={{ minHeight: '24px' }}
           />
@@ -236,7 +233,7 @@ export default function CopilotPage() {
             }
           </button>
         </div>
-        <p className="text-[10px] text-gray-400 text-center mt-1.5">Enter para enviar · Shift+Enter para nova linha</p>
+        <p className="text-[10px] text-gray-400 text-center mt-1.5">Enter para enviar - Shift+Enter para nova linha</p>
       </div>
     </div>
   )
