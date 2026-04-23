@@ -9,10 +9,26 @@ interface Message {
 }
 
 const QUICK_PROMPTS = [
-  { icon: Bot, label: 'Status do agente', prompt: 'Me mostre o status atual do agente, pontos de atencao e o que ajustar para melhorar a operacao.' },
-  { icon: BarChart2, label: 'Resumo executivo', prompt: 'Me de um resumo executivo da operacao de hoje, incluindo reservas, leads em aberto e prioridades.' },
-  { icon: TrendingUp, label: 'Oportunidades', prompt: 'Quais sao hoje as melhores oportunidades de conversao e upsell no hotel?' },
-  { icon: Users, label: 'Acoes de gestao', prompt: 'Quais acoes praticas de gestao e atendimento voce recomenda para as proximas horas?' },
+  {
+    icon: Bot,
+    label: 'Status do agente',
+    prompt: 'Me mostre o status atual do agente, pontos de atencao e o que ajustar para melhorar a operacao.',
+  },
+  {
+    icon: BarChart2,
+    label: 'Resumo executivo',
+    prompt: 'Me de um resumo executivo da operacao de hoje, incluindo reservas, leads em aberto e prioridades.',
+  },
+  {
+    icon: TrendingUp,
+    label: 'Oportunidades',
+    prompt: 'Quais sao hoje as melhores oportunidades de conversao e upsell no hotel?',
+  },
+  {
+    icon: Users,
+    label: 'Acoes de gestao',
+    prompt: 'Quais acoes praticas de gestao e atendimento voce recomenda para as proximas horas?',
+  },
 ]
 
 export default function CopilotPage() {
@@ -32,29 +48,32 @@ export default function CopilotPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const sendMessage = useCallback(async (text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed || loading) return
+  const sendMessage = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim()
+      if (!trimmed || loading) return
 
-    const newMessages: Message[] = [...messages, { role: 'user', content: trimmed }]
-    setMessages(newMessages)
-    setInput('')
-    setLoading(true)
+      const newMessages: Message[] = [...messages, { role: 'user', content: trimmed }]
+      setMessages(newMessages)
+      setInput('')
+      setLoading(true)
 
-    try {
-      const res = await fetch('/api/copilot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages }),
-      })
-      const data = await res.json()
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply || 'Erro ao processar.' }])
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Erro de conexao. Tente novamente.' }])
-    } finally {
-      setLoading(false)
-    }
-  }, [messages, loading])
+      try {
+        const res = await fetch('/api/copilot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: newMessages }),
+        })
+        const data = await res.json()
+        setMessages(prev => [...prev, { role: 'assistant', content: data.reply || 'Erro ao processar.' }])
+      } catch {
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Erro de conexao. Tente novamente.' }])
+      } finally {
+        setLoading(false)
+      }
+    },
+    [messages, loading]
+  )
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -72,7 +91,11 @@ export default function CopilotPage() {
       const parts = text.split(/(\*\*[^*]+\*\*)/g)
       return parts.map((part, idx) => {
         if (part.startsWith('**') && part.endsWith('**')) {
-          return <strong key={idx} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>
+          return (
+            <strong key={idx} className="font-semibold text-gray-900">
+              {part.slice(2, -2)}
+            </strong>
+          )
         }
         return part
       })
@@ -81,17 +104,17 @@ export default function CopilotPage() {
     while (i < lines.length) {
       const line = lines[i]
 
-      if (/^[-•]\s/.test(line)) {
+      if (/^[-*•]\s/.test(line)) {
         const items: string[] = []
-        while (i < lines.length && /^[-•]\s/.test(lines[i])) {
-          items.push(lines[i].replace(/^[-•]\s/, ''))
+        while (i < lines.length && /^[-*•]\s/.test(lines[i])) {
+          items.push(lines[i].replace(/^[-*•]\s/, ''))
           i += 1
         }
         elements.push(
           <ul key={`ul-${i}`} className="space-y-1 my-1">
             {items.map((item, idx) => (
               <li key={idx} className="flex gap-2">
-                <span className="text-violet-400 mt-0.5 flex-shrink-0">•</span>
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-violet-400 flex-shrink-0" />
                 <span>{renderInline(item)}</span>
               </li>
             ))}
@@ -126,7 +149,9 @@ export default function CopilotPage() {
       }
 
       elements.push(
-        <p key={`p-${i}`} className="leading-relaxed">{renderInline(line)}</p>
+        <p key={`p-${i}`} className="leading-relaxed">
+          {renderInline(line)}
+        </p>
       )
       i += 1
     }
@@ -143,7 +168,9 @@ export default function CopilotPage() {
           </div>
           <div>
             <h1 className="font-semibold text-gray-900">Copilot IA</h1>
-            <p className="text-xs text-gray-500">Assistente de gestao hoteleira com foco em operacao, agente e conversao</p>
+            <p className="text-xs text-gray-500">
+              Assistente de gestao hoteleira com foco em operacao, agente e conversao
+            </p>
           </div>
           <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-200 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -155,21 +182,24 @@ export default function CopilotPage() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-            <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${
-              msg.role === 'assistant'
-                ? 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm'
-                : 'bg-gray-200'
-            }`}>
-              {msg.role === 'assistant'
-                ? <Bot className="w-3.5 h-3.5 text-white" />
-                : <User className="w-3.5 h-3.5 text-gray-600" />
-              }
+            <div
+              className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${
+                msg.role === 'assistant' ? 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm' : 'bg-gray-200'
+              }`}
+            >
+              {msg.role === 'assistant' ? (
+                <Bot className="w-3.5 h-3.5 text-white" />
+              ) : (
+                <User className="w-3.5 h-3.5 text-gray-600" />
+              )}
             </div>
-            <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-              msg.role === 'assistant'
-                ? 'bg-white border border-gray-200 text-gray-800 shadow-sm rounded-tl-sm'
-                : 'bg-violet-600 text-white rounded-tr-sm'
-            }`}>
+            <div
+              className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                msg.role === 'assistant'
+                  ? 'bg-white border border-gray-200 text-gray-800 shadow-sm rounded-tl-sm'
+                  : 'bg-violet-600 text-white rounded-tr-sm'
+              }`}
+            >
               {formatMessage(msg.content)}
             </div>
           </div>
@@ -227,10 +257,7 @@ export default function CopilotPage() {
             disabled={!input.trim() || loading}
             className="flex-shrink-0 w-8 h-8 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:bg-gray-200 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
           >
-            {loading
-              ? <Loader2 className="w-4 h-4 text-white animate-spin" />
-              : <Send className="w-3.5 h-3.5 text-white" />
-            }
+            {loading ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Send className="w-3.5 h-3.5 text-white" />}
           </button>
         </div>
         <p className="text-[10px] text-gray-400 text-center mt-1.5">Enter para enviar - Shift+Enter para nova linha</p>
