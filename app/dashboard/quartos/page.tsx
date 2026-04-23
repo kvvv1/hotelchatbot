@@ -1,22 +1,21 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  AlertTriangle,
   BedDouble,
   Calendar,
-  RefreshCw,
-  AlertTriangle,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Upload,
   Database,
-  Trash2,
+  Loader2,
+  Lock,
+  Plus,
+  RefreshCw,
   Sparkles,
-  Wallet,
-  WavesLadder,
+  Users,
+  Wrench,
 } from 'lucide-react'
 
 interface RoomAvailability {
@@ -47,27 +46,67 @@ interface RoomsResponse {
   manualWarning?: string | null
 }
 
-type TimelineDay = {
-  label: string
-  fullDate: string
-}
-
-type CalendarCell = {
+type CalendarDay = {
   date: string
-  currentMonth: boolean
+  label: string
+  dayNumber: string
 }
 
-type ViewTab = 'resumo' | 'agenda' | 'atualizacao'
+type PMSUnit = {
+  id: string
+  label: string
+  typeCode: string
+  typeName: string
+  capacity: number
+  rate: number
+}
+
+type ReservationStatus = 'pre_booking' | 'occupied'
+type InventoryBlockType = 'blocked' | 'maintenance'
+type Channel = 'WhatsApp' | 'Booking.com' | 'Site' | 'Recepcao'
+type InventoryStatus = 'free' | 'blocked' | 'maintenance' | 'pre_booking' | 'occupied' | 'checkout'
+type ComposerMode = 'reservation' | 'blocked' | 'maintenance'
+
+type ReservationItem = {
+  id: string
+  unitId: string
+  guestName: string
+  start: string
+  end: string
+  status: ReservationStatus
+  channel: Channel
+  occupancy: number
+}
+
+type BlockItem = {
+  id: string
+  unitId: string
+  start: string
+  end: string
+  type: InventoryBlockType
+  reason: string
+}
+
+type ComposerState = {
+  mode: ComposerMode
+  unitId: string
+  start: string
+  end: string
+  guestName: string
+  channel: Channel
+  occupancy: number
+  reason: string
+}
 
 function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr)
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  const date = new Date(`${dateStr}T12:00:00`)
+  date.setDate(date.getDate() + days)
+  return date.toISOString().slice(0, 10)
 }
 
 function formatDateBR(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-')
-  return `${d}/${m}/${y}`
+  const [year, month, day] = dateStr.split('-')
+  return `${day}/${month}/${year}`
 }
 
 function formatDateTimeBR(dateStr?: string | null): string {
@@ -75,29 +114,14 @@ function formatDateTimeBR(dateStr?: string | null): string {
   return new Date(dateStr).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
 }
 
-function isAvailableRoom(room: RoomAvailability): boolean {
-  if (typeof room.available === 'boolean') return room.available
-  if (typeof room.available === 'number') return room.available > 0
-  if (typeof room.availableRooms === 'number') return room.availableRooms > 0
-  return true
-}
-
-function getAvailableCount(room: RoomAvailability): number | null {
-  if (typeof room.availableRooms === 'number') return room.availableRooms
-  if (typeof room.available === 'number') return room.available
-  return null
-}
-
-function getRate(room: RoomAvailability): number | null {
-  return room.rate ?? room.price ?? null
-}
-
-function getRoomName(room: RoomAvailability): string {
-  return String(room.roomTypeName || room.name || room.roomTypeCode || `Tipo ${room.roomTypeId ?? '?'}`)
-}
-
-function startOfMonth(monthKey: string): string {
+function monthStart(monthKey: string): string {
   return `${monthKey}-01`
+}
+
+function nextMonth(monthKey: string): string {
+  const [year, month] = monthKey.split('-').map(Number)
+  const date = new Date(year, month, 1)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
 function shiftMonth(monthKey: string, delta: number): string {
@@ -114,229 +138,419 @@ function formatMonthLabel(monthKey: string): string {
   })
 }
 
-function buildCalendarCells(monthKey: string): CalendarCell[] {
-  const monthStart = new Date(`${startOfMonth(monthKey)}T12:00:00`)
-  const firstDay = new Date(monthStart)
-  firstDay.setDate(1)
+function buildMonthDays(monthKey: string): CalendarDay[] {
+  const start = new Date(`${monthStart(monthKey)}T12:00:00`)
+  const end = new Date(`${nextMonth(monthKey)}-01T12:00:00`)
+  const days: CalendarDay[] = []
+  const cursor = new Date(start)
 
-  const gridStart = new Date(firstDay)
-  gridStart.setDate(firstDay.getDate() - firstDay.getDay())
-
-  return Array.from({ length: 42 }, (_, index) => {
-    const current = new Date(gridStart)
-    current.setDate(gridStart.getDate() + index)
-    const date = current.toISOString().slice(0, 10)
-    return {
+  while (cursor < end) {
+    const date = cursor.toISOString().slice(0, 10)
+    days.push({
       date,
-      currentMonth: current.getMonth() === monthStart.getMonth(),
+      label: cursor.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', ''),
+      dayNumber: String(cursor.getDate()).padStart(2, '0'),
+    })
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  return days
+}
+
+function overlaps(startA: string, endA: string, startB: string, endB: string): boolean {
+  return startA < endB && startB < endA
+}
+
+function getRoomName(room: RoomAvailability): string {
+  return String(room.roomTypeName || room.name || room.roomTypeCode || `Tipo ${room.roomTypeId ?? '?'}`)
+}
+
+function getRate(room: RoomAvailability): number {
+  return Number(room.rate ?? room.price ?? 0)
+}
+
+function buildUnits(rooms: RoomAvailability[]): PMSUnit[] {
+  const units: PMSUnit[] = []
+
+  rooms.forEach((room, roomIndex) => {
+    const typeCode = String(room.roomTypeCode || `CAT${roomIndex + 1}`)
+    const typeName = getRoomName(room)
+    const totalRooms = typeof room.totalRooms === 'number' && room.totalRooms > 0 ? room.totalRooms : 3
+    const unitCount = Math.min(Math.max(totalRooms, 2), 5)
+    const capacity = /familia|family/i.test(typeName) ? 4 : /chale|suite/i.test(typeName) ? 3 : 2
+    const baseNumber = 100 + roomIndex * 10
+
+    for (let index = 0; index < unitCount; index += 1) {
+      units.push({
+        id: `${typeCode}-${index + 1}`,
+        label: `${baseNumber + index + 1}`,
+        typeCode,
+        typeName,
+        capacity,
+        rate: getRate(room),
+      })
     }
   })
+
+  return units
+}
+
+function buildDemoInventory(units: PMSUnit[], monthKey: string) {
+  const reservations: ReservationItem[] = []
+  const blocks: BlockItem[] = []
+  const channels: Channel[] = ['WhatsApp', 'Booking.com', 'Site', 'Recepcao']
+  const start = monthStart(monthKey)
+
+  units.forEach((unit, index) => {
+    const channel = channels[index % channels.length]
+    const offset = (index % 5) * 3
+
+    reservations.push({
+      id: `res-${unit.id}-1`,
+      unitId: unit.id,
+      guestName: ['Juliana Castro', 'Rafael Mendes', 'Patricia Nunes', 'Marcelo Pires', 'Camila Rocha'][index % 5],
+      start: addDays(start, offset + 1),
+      end: addDays(start, offset + 4),
+      status: index % 3 === 0 ? 'pre_booking' : 'occupied',
+      channel,
+      occupancy: Math.min(unit.capacity, index % unit.capacity + 1),
+    })
+
+    if (index % 2 === 0) {
+      reservations.push({
+        id: `res-${unit.id}-2`,
+        unitId: unit.id,
+        guestName: ['Grupo Serra', 'Daniel Alves', 'Carla Souza', 'Familia Lima'][index % 4],
+        start: addDays(start, offset + 11),
+        end: addDays(start, offset + 15),
+        status: 'occupied',
+        channel: channels[(index + 1) % channels.length],
+        occupancy: Math.min(unit.capacity, Math.max(2, unit.capacity - 1)),
+      })
+    }
+
+    if (index % 4 === 0) {
+      blocks.push({
+        id: `block-${unit.id}-1`,
+        unitId: unit.id,
+        start: addDays(start, offset + 18),
+        end: addDays(start, offset + 20),
+        type: 'maintenance',
+        reason: 'Revisao preventiva',
+      })
+    }
+
+    if (index % 5 === 1) {
+      blocks.push({
+        id: `block-${unit.id}-2`,
+        unitId: unit.id,
+        start: addDays(start, offset + 22),
+        end: addDays(start, offset + 24),
+        type: 'blocked',
+        reason: 'Bloqueio operacional',
+      })
+    }
+  })
+
+  return { reservations, blocks }
+}
+
+function defaultComposer(unitId: string, start: string, end: string): ComposerState {
+  return {
+    mode: 'reservation',
+    unitId,
+    start,
+    end,
+    guestName: '',
+    channel: 'WhatsApp',
+    occupancy: 2,
+    reason: '',
+  }
 }
 
 export default function QuartosPage() {
   const today = new Date().toISOString().slice(0, 10)
-  const [checkIn, setCheckIn] = useState(today)
-  const [checkOut, setCheckOut] = useState(addDays(today, 7))
   const [visibleMonth, setVisibleMonth] = useState(today.slice(0, 7))
-  const [activeCalendarField, setActiveCalendarField] = useState<'checkIn' | 'checkOut'>('checkIn')
-  const [activeTab, setActiveTab] = useState<ViewTab>('resumo')
   const [data, setData] = useState<RoomsResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [importing, setImporting] = useState(false)
-  const [clearingSnapshot, setClearingSnapshot] = useState(false)
-  const [importMessage, setImportMessage] = useState<string | null>(null)
-  const [importError, setImportError] = useState<string | null>(null)
-  const [selectedRoomIndex, setSelectedRoomIndex] = useState(0)
-  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [units, setUnits] = useState<PMSUnit[]>([])
+  const [reservations, setReservations] = useState<ReservationItem[]>([])
+  const [blocks, setBlocks] = useState<BlockItem[]>([])
+  const [selectedUnitId, setSelectedUnitId] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [occupancyFilter, setOccupancyFilter] = useState('all')
+  const [channelFilter, setChannelFilter] = useState('all')
+  const [draggingReservationId, setDraggingReservationId] = useState<string | null>(null)
+  const [composer, setComposer] = useState<ComposerState>(defaultComposer('', today, addDays(today, 1)))
+  const [composerMessage, setComposerMessage] = useState<string | null>(null)
 
-  const fetchRooms = useCallback(async (ci: string, co: string) => {
+  const fetchRooms = useCallback(async () => {
     setLoading(true)
     setError(null)
+
     try {
-      const res = await fetch(`/api/rooms?checkIn=${ci}&checkOut=${co}`)
+      const start = monthStart(visibleMonth)
+      const end = monthStart(nextMonth(visibleMonth))
+      const res = await fetch(`/api/rooms?checkIn=${start}&checkOut=${end}`)
       const json = (await res.json()) as RoomsResponse & { error?: string }
       if (!res.ok) throw new Error(json.error || 'Erro ao buscar quartos')
       setData(json)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro desconhecido')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [visibleMonth])
 
   useEffect(() => {
-    fetchRooms(checkIn, checkOut)
-  }, [fetchRooms]) // eslint-disable-line react-hooks/exhaustive-deps
+    fetchRooms()
+  }, [fetchRooms])
 
   useEffect(() => {
-    setVisibleMonth(checkIn.slice(0, 7))
-  }, [checkIn])
+    if (!data?.availability?.length) return
 
-  const rooms = data?.availability ?? []
-  const selectedRoom = rooms[selectedRoomIndex] ?? rooms[0] ?? null
-  const availableRooms = rooms.filter(isAvailableRoom)
-  const averageRate =
-    availableRooms.length > 0
-      ? availableRooms.reduce((total, room) => total + (getRate(room) ?? 0), 0) / availableRooms.length
-      : 0
-  const nights = Math.max(
-    1,
-    Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
-  )
+    const nextUnits = buildUnits(data.availability)
+    const nextInventory = buildDemoInventory(nextUnits, visibleMonth)
+    setUnits(nextUnits)
+    setReservations(nextInventory.reservations)
+    setBlocks(nextInventory.blocks)
+    setSelectedUnitId(nextUnits[0]?.id || '')
+    setComposer(defaultComposer(nextUnits[0]?.id || '', monthStart(visibleMonth), addDays(monthStart(visibleMonth), 1)))
+    setComposerMessage(null)
+  }, [data, visibleMonth])
 
-  const timelineDays: TimelineDay[] = Array.from({ length: Math.min(nights, 7) }, (_, index) => {
-    const date = addDays(checkIn, index)
-    return {
-      label: new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }),
-      fullDate: formatDateBR(date),
-    }
-  })
-
-  useEffect(() => {
-    if (!rooms.length) {
-      setSelectedRoomIndex(0)
-      return
-    }
-
-    if (selectedRoomIndex > rooms.length - 1) setSelectedRoomIndex(0)
-  }, [rooms.length, selectedRoomIndex])
-
-  function shiftDates(days: number) {
-    const newCI = addDays(checkIn, days)
-    const newCO = addDays(checkOut, days)
-    setCheckIn(newCI)
-    setCheckOut(newCO)
-    fetchRooms(newCI, newCO)
-  }
-
-  function handleSearch() {
-    if (checkIn >= checkOut) return
-    fetchRooms(checkIn, checkOut)
-  }
-
-  function applyStayPreset(nextNights: number) {
-    const nextCheckOut = addDays(checkIn, nextNights)
-    setCheckOut(nextCheckOut)
-    fetchRooms(checkIn, nextCheckOut)
-  }
-
-  function handleCalendarDateClick(date: string) {
-    if (date < today) return
-
-    if (activeCalendarField === 'checkIn') {
-      const nextCheckOut = date >= checkOut ? addDays(date, 1) : checkOut
-      setCheckIn(date)
-      setCheckOut(nextCheckOut)
-      setActiveCalendarField('checkOut')
-      return
-    }
-
-    if (date <= checkIn) {
-      setCheckIn(date)
-      setCheckOut(addDays(date, 1))
-      setActiveCalendarField('checkOut')
-      return
-    }
-
-    setCheckOut(date)
-    setActiveCalendarField('checkIn')
-  }
-
-  async function handleImportFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setImporting(true)
-    setImportMessage(null)
-    setImportError(null)
-
-    try {
-      const csvText = await file.text()
-      const res = await fetch('/api/hotel/manual-inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          csvText,
-          fileName: file.name,
-          checkIn,
-          checkOut,
-        }),
-      })
-
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Nao foi possivel importar o arquivo.')
-
-      const summary = json.summary
-      setImportMessage(
-        `Atualizacao concluida: ${summary?.importedRoomTypes ?? 0} categoria(s) e ${summary?.availableRoomTypes ?? 0} com disponibilidade.`
-      )
-      await fetchRooms(checkIn, checkOut)
-    } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Erro ao atualizar disponibilidade.')
-    } finally {
-      setImporting(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
-  }
-
-  async function handleClearSnapshot() {
-    setClearingSnapshot(true)
-    setImportMessage(null)
-    setImportError(null)
-    try {
-      const res = await fetch('/api/hotel/manual-inventory', { method: 'DELETE' })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Nao foi possivel remover o arquivo.')
-      setImportMessage('Atualizacao removida.')
-      await fetchRooms(checkIn, checkOut)
-    } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Erro ao remover atualizacao.')
-    } finally {
-      setClearingSnapshot(false)
-    }
-  }
-
-  function getOccupancyLevel(room: RoomAvailability): number {
-    const availableCount = getAvailableCount(room)
-    const total = room.totalRooms
-    if (typeof availableCount !== 'number' || typeof total !== 'number' || total <= 0) return 0.65
-    return Math.max(0.1, Math.min(0.95, 1 - availableCount / total))
-  }
-
-  function getTimelineOpacity(level: number, offset: number): number {
-    return Math.min(0.95, Math.max(0.18, level - offset * 0.08 + 0.12))
-  }
-
-  const calendarCells = buildCalendarCells(visibleMonth)
-  const selectedRoomOccupancy = selectedRoom ? getOccupancyLevel(selectedRoom) : 0.5
+  const days = useMemo(() => buildMonthDays(visibleMonth), [visibleMonth])
   const sourceBadge =
     data?.source === 'manual'
       ? 'bg-amber-100 text-amber-800 border-amber-200'
       : 'bg-emerald-100 text-emerald-800 border-emerald-200'
 
-  const tabs: Array<{ id: ViewTab; label: string }> = [
-    { id: 'resumo', label: 'Resumo' },
-    { id: 'agenda', label: 'Agenda' },
-    { id: 'atualizacao', label: 'Atualizacao' },
-  ]
+  const roomTypeOptions = useMemo(
+    () => Array.from(new Set(units.map(unit => unit.typeCode))).sort(),
+    [units]
+  )
+
+  const filteredUnits = useMemo(() => {
+    return units.filter(unit => {
+      const byType = typeFilter === 'all' || unit.typeCode === typeFilter
+      const byOccupancy = occupancyFilter === 'all' || unit.capacity >= Number(occupancyFilter)
+      const byChannel =
+        channelFilter === 'all' ||
+        reservations.some(reservation => reservation.unitId === unit.id && reservation.channel === channelFilter)
+
+      return byType && byOccupancy && byChannel
+    })
+  }, [channelFilter, occupancyFilter, reservations, typeFilter, units])
+
+  const selectedUnit = filteredUnits.find(unit => unit.id === selectedUnitId) || filteredUnits[0] || units[0] || null
+
+  useEffect(() => {
+    if (!selectedUnit) return
+    setSelectedUnitId(selectedUnit.id)
+    setComposer(current => ({ ...current, unitId: current.unitId || selectedUnit.id }))
+  }, [selectedUnit])
+
+  const currentGuests = useMemo(
+    () =>
+      reservations.filter(
+        reservation => reservation.status === 'occupied' && reservation.start <= today && reservation.end > today
+      ),
+    [reservations, today]
+  )
+
+  const upcomingArrivals = useMemo(
+    () =>
+      reservations
+        .filter(reservation => reservation.start >= today)
+        .sort((a, b) => a.start.localeCompare(b.start))
+        .slice(0, 6),
+    [reservations, today]
+  )
+
+  const getUnitStatus = useCallback(
+    (unitId: string, date: string): InventoryStatus => {
+      const block = blocks.find(item => item.unitId === unitId && item.start <= date && item.end > date)
+      if (block) return block.type
+
+      const checkoutReservation = reservations.find(
+        item => item.unitId === unitId && item.end === date && item.status === 'occupied'
+      )
+      if (checkoutReservation) return 'checkout'
+
+      const reservation = reservations.find(
+        item => item.unitId === unitId && item.start <= date && item.end > date
+      )
+      if (!reservation) return 'free'
+      return reservation.status
+    },
+    [blocks, reservations]
+  )
+
+  const alerts = useMemo(() => {
+    const nextAlerts: string[] = []
+
+    filteredUnits.forEach(unit => {
+      const unitReservations = reservations.filter(reservation => reservation.unitId === unit.id)
+      const unitBlocks = blocks.filter(block => block.unitId === unit.id)
+
+      unitReservations.forEach((reservation, reservationIndex) => {
+        unitReservations.slice(reservationIndex + 1).forEach(otherReservation => {
+          if (overlaps(reservation.start, reservation.end, otherReservation.start, otherReservation.end)) {
+            nextAlerts.push(`Conflito de reserva no quarto ${unit.label}.`)
+          }
+        })
+
+        unitBlocks.forEach(block => {
+          if (overlaps(reservation.start, reservation.end, block.start, block.end)) {
+            nextAlerts.push(`Reserva sobreposta a ${block.type === 'maintenance' ? 'manutencao' : 'bloqueio'} no quarto ${unit.label}.`)
+          }
+        })
+      })
+    })
+
+    roomTypeOptions.forEach(typeCode => {
+      const typeUnits = filteredUnits.filter(unit => unit.typeCode === typeCode)
+      const totalUnits = typeUnits.length
+      if (!totalUnits) return
+
+      days.forEach(day => {
+        const busyUnits = typeUnits.filter(unit => {
+          const status = getUnitStatus(unit.id, day.date)
+          return status !== 'free' && status !== 'checkout'
+        }).length
+
+        if (busyUnits > totalUnits) {
+          nextAlerts.push(`Overbooking detectado em ${typeCode} no dia ${formatDateBR(day.date)}.`)
+        } else if (busyUnits === totalUnits) {
+          nextAlerts.push(`Categoria ${typeCode} lotada em ${formatDateBR(day.date)}.`)
+        }
+      })
+    })
+
+    return Array.from(new Set(nextAlerts)).slice(0, 8)
+  }, [blocks, days, filteredUnits, getUnitStatus, reservations, roomTypeOptions])
+
+  function getStatusStyles(status: InventoryStatus): string {
+    if (status === 'blocked') return 'bg-slate-200'
+    if (status === 'maintenance') return 'bg-amber-200'
+    if (status === 'pre_booking') return 'bg-violet-100'
+    if (status === 'occupied') return 'bg-emerald-100'
+    if (status === 'checkout') return 'bg-sky-100'
+    return 'bg-white'
+  }
+
+  function getReservationSpan(reservation: ReservationItem) {
+    const startIndex = days.findIndex(day => day.date === reservation.start)
+    const endIndex = days.findIndex(day => day.date === reservation.end)
+    const fallbackEnd = endIndex === -1 ? days.length : endIndex
+    if (startIndex === -1) return null
+    return {
+      columnStart: startIndex + 2,
+      span: Math.max(1, fallbackEnd - startIndex),
+    }
+  }
+
+  function handleCellClick(unitId: string, date: string) {
+    setSelectedUnitId(unitId)
+    setComposer(current => ({
+      ...current,
+      unitId,
+      start: date,
+      end: addDays(date, 1),
+    }))
+    setComposerMessage(null)
+  }
+
+  function handleQuickMode(mode: ComposerMode) {
+    setComposer(current => ({ ...current, mode }))
+    setComposerMessage(null)
+  }
+
+  function handleCreateInventoryItem() {
+    if (!composer.unitId || !composer.start || !composer.end || composer.start >= composer.end) {
+      setComposerMessage('Confira unidade e datas antes de salvar.')
+      return
+    }
+
+    if (composer.mode === 'reservation' && !composer.guestName.trim()) {
+      setComposerMessage('Informe o nome do hospede para criar a reserva.')
+      return
+    }
+
+    if (composer.mode === 'reservation') {
+      setReservations(current => [
+        {
+          id: `res-custom-${Date.now()}`,
+          unitId: composer.unitId,
+          guestName: composer.guestName.trim(),
+          start: composer.start,
+          end: composer.end,
+          status: 'pre_booking',
+          channel: composer.channel,
+          occupancy: composer.occupancy,
+        },
+        ...current,
+      ])
+      setComposerMessage('Reserva criada no calendario.')
+    } else {
+      setBlocks(current => [
+        {
+          id: `block-custom-${Date.now()}`,
+          unitId: composer.unitId,
+          start: composer.start,
+          end: composer.end,
+          type: composer.mode === 'maintenance' ? 'maintenance' : 'blocked',
+          reason: composer.reason.trim() || (composer.mode === 'maintenance' ? 'Manutencao preventiva' : 'Bloqueio manual'),
+        },
+        ...current,
+      ])
+      setComposerMessage(composer.mode === 'maintenance' ? 'Manutencao registrada.' : 'Bloqueio manual aplicado.')
+    }
+  }
+
+  function handleReservationDrop(targetUnitId: string, targetDate: string) {
+    if (!draggingReservationId) return
+
+    setReservations(current =>
+      current.map(item => {
+        if (item.id !== draggingReservationId) return item
+        const duration =
+          Math.max(
+            1,
+            Math.ceil(
+              (new Date(`${item.end}T12:00:00`).getTime() - new Date(`${item.start}T12:00:00`).getTime()) /
+                (1000 * 60 * 60 * 24)
+            )
+          )
+
+        return {
+          ...item,
+          unitId: targetUnitId,
+          start: targetDate,
+          end: addDays(targetDate, duration),
+        }
+      })
+    )
+    setDraggingReservationId(null)
+    setComposerMessage('Reserva reposicionada no calendario.')
+  }
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-4">
+      <div className="mx-auto max-w-[1600px] h-[calc(100vh-96px)] min-h-[760px] flex flex-col gap-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
               <BedDouble className="w-5 h-5 text-violet-500" />
-              Quartos & Disponibilidade
+              Mapa de Quartos
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              Painel unico para consulta, agenda e atualizacao de disponibilidade.
+              Visao operacional por unidade, com reservas, bloqueios e agenda mensal em estilo PMS.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {data?.source && (
               <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium ${sourceBadge}`}>
                 <Database className="w-3.5 h-3.5" />
@@ -345,623 +559,469 @@ export default function QuartosPage() {
             )}
 
             <button
-              onClick={() => fetchRooms(checkIn, checkOut)}
+              type="button"
+              onClick={() => fetchRooms()}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Atualizar
             </button>
           </div>
         </div>
 
-        <div className="rounded-[30px] border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex-1 min-h-0 rounded-[32px] border border-gray-200 bg-white shadow-sm overflow-hidden">
           <div className="border-b border-gray-100 px-4 py-4 sm:px-6">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => shiftDates(-1)}
-                    className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-500 transition-colors"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => shiftDates(1)}
-                    className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-500 transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1 font-medium">Check-in</label>
-                  <input
-                    type="date"
-                    value={checkIn}
-                    min={today}
-                    onChange={e => setCheckIn(e.target.value)}
-                    onFocus={() => setActiveCalendarField('checkIn')}
-                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1 font-medium">Check-out</label>
-                  <input
-                    type="date"
-                    value={checkOut}
-                    min={addDays(checkIn, 1)}
-                    onChange={e => setCheckOut(e.target.value)}
-                    onFocus={() => setActiveCalendarField('checkOut')}
-                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
-                  />
-                </div>
-
+              <div className="flex flex-wrap items-center gap-2">
                 <button
-                  onClick={handleSearch}
-                  disabled={loading || checkIn >= checkOut}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white font-medium rounded-xl text-sm transition-colors"
+                  type="button"
+                  onClick={() => setVisibleMonth(current => shiftMonth(current, -1))}
+                  className="w-10 h-10 rounded-2xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors flex items-center justify-center"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
-                  Consultar
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 min-w-[220px] text-center">
+                  <p className="text-xs uppercase tracking-[0.22em] text-gray-400">Calendario mensal</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-1 capitalize">{formatMonthLabel(visibleMonth)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setVisibleMonth(current => shiftMonth(current, 1))}
+                  className="w-10 h-10 rounded-2xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                >
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-2xl bg-violet-50 px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-wide text-violet-500">Disponiveis</p>
-                  <p className="text-xl font-semibold text-gray-900 mt-1">{availableRooms.length}</p>
-                </div>
-                <div className="rounded-2xl bg-emerald-50 px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-wide text-emerald-500">Media</p>
-                  <p className="text-xl font-semibold text-gray-900 mt-1">R$ {averageRate > 0 ? averageRate.toFixed(0) : '0'}</p>
-                </div>
-                <div className="rounded-2xl bg-sky-50 px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-wide text-sky-500">Janela</p>
-                  <p className="text-xl font-semibold text-gray-900 mt-1">{nights} noites</p>
-                </div>
-                <div className="rounded-2xl bg-amber-50 px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-wide text-amber-500">Periodo</p>
-                  <p className="text-sm font-semibold text-gray-900 mt-1">
-                    {formatDateBR(checkIn)} - {formatDateBR(checkOut)}
-                  </p>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <select
+                  value={typeFilter}
+                  onChange={event => setTypeFilter(event.target.value)}
+                  className="rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                >
+                  <option value="all">Todos os tipos</option>
+                  {roomTypeOptions.map(typeCode => (
+                    <option key={typeCode} value={typeCode}>
+                      {typeCode}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={occupancyFilter}
+                  onChange={event => setOccupancyFilter(event.target.value)}
+                  className="rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                >
+                  <option value="all">Qualquer ocupacao</option>
+                  <option value="2">2+ hospedes</option>
+                  <option value="3">3+ hospedes</option>
+                  <option value="4">4+ hospedes</option>
+                </select>
+
+                <select
+                  value={channelFilter}
+                  onChange={event => setChannelFilter(event.target.value)}
+                  className="rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                >
+                  <option value="all">Todos os canais</option>
+                  <option value="WhatsApp">WhatsApp</option>
+                  <option value="Booking.com">Booking.com</option>
+                  <option value="Site">Site</option>
+                  <option value="Recepcao">Recepcao</option>
+                </select>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => selectedRoom && setIsRoomModalOpen(true)}
-                disabled={!selectedRoom}
-                className="rounded-full px-4 py-2 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-40 transition-colors"
-              >
-                Ver detalhes da categoria
-              </button>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-gray-500">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+                <CheckCircle className="w-3.5 h-3.5" />
+                Livre / checkout liberado
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-3 py-1 text-violet-700">
+                <Calendar className="w-3.5 h-3.5" />
+                Pre-reserva
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+                <Lock className="w-3.5 h-3.5" />
+                Bloqueado
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-amber-700">
+                <Wrench className="w-3.5 h-3.5" />
+                Manutencao
+              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px]">
-            <div className="p-4 sm:p-6">
-              <div className="min-h-[540px] rounded-[28px] border border-gray-200 bg-gray-50/60 p-4">
-                {activeTab === 'resumo' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {rooms.map((room, index) => {
-                        const available = isAvailableRoom(room)
-                        const count = getAvailableCount(room)
-                        const rate = getRate(room)
-                        return (
-                          <button
-                            key={`${getRoomName(room)}-${index}`}
-                            type="button"
-                            onClick={() => {
-                              setSelectedRoomIndex(index)
-                              setIsRoomModalOpen(true)
-                            }}
-                            className={`rounded-[24px] border bg-white p-5 text-left shadow-sm transition-all ${
-                              index === selectedRoomIndex
-                                ? 'border-violet-300 ring-2 ring-violet-100'
-                                : 'border-gray-200 hover:border-violet-200'
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] h-[calc(100%-132px)]">
+            <div className="min-h-0 overflow-auto bg-gray-50/60">
+              {loading && !units.length ? (
+                <div className="h-full flex items-center justify-center text-gray-400 gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Carregando grade de quartos...</span>
+                </div>
+              ) : filteredUnits.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-3">
+                  <BedDouble className="w-10 h-10 opacity-30" />
+                  <p>Nenhuma unidade encontrada para os filtros atuais.</p>
+                </div>
+              ) : (
+                <div className="min-w-[1650px]">
+                  <div
+                    className="sticky top-0 z-20 grid border-b border-gray-200 bg-white"
+                    style={{ gridTemplateColumns: `220px repeat(${days.length}, minmax(44px, 1fr))` }}
+                  >
+                    <div className="sticky left-0 z-20 border-r border-gray-200 bg-white px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.22em] text-gray-400">Unidade</p>
+                    </div>
+                    {days.map(day => (
+                      <div key={day.date} className="border-r border-gray-100 px-1 py-3 text-center">
+                        <p className="text-[10px] uppercase tracking-wide text-gray-400">{day.label}</p>
+                        <p className="text-sm font-semibold text-gray-900 mt-1">{day.dayNumber}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="divide-y divide-gray-200">
+                    {filteredUnits.map(unit => {
+                      const unitReservations = reservations.filter(reservation => reservation.unitId === unit.id)
+                      const unitBlocks = blocks.filter(block => block.unitId === unit.id)
+
+                      return (
+                        <div
+                          key={unit.id}
+                          className="grid items-stretch relative bg-white"
+                          style={{ gridTemplateColumns: `220px repeat(${days.length}, minmax(44px, 1fr))` }}
+                        >
+                          <div
+                            className={`sticky left-0 z-10 border-r border-gray-200 px-4 py-3 bg-white ${
+                              selectedUnitId === unit.id ? 'bg-violet-50' : ''
                             }`}
                           >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${available ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-400'}`}>
-                                  <BedDouble className="w-5 h-5" />
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-gray-900">{getRoomName(room)}</p>
-                                  <p className="text-xs text-gray-500 mt-1">{room.roomTypeCode || 'Categoria'}</p>
-                                </div>
-                              </div>
-                              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${available ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                                {available ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                                {available ? 'Disponivel' : 'Lotado'}
-                              </span>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedUnitId(unit.id)
+                                setComposer(current => ({ ...current, unitId: unit.id }))
+                              }}
+                              className="text-left w-full"
+                            >
+                              <p className="font-semibold text-gray-900">Quarto {unit.label}</p>
+                              <p className="text-xs text-gray-500 mt-1">{unit.typeName}</p>
+                              <p className="text-xs text-gray-400 mt-1">{unit.capacity} hospedes • R$ {unit.rate.toFixed(0)}</p>
+                            </button>
+                          </div>
 
-                            <div className="mt-5 flex items-end justify-between">
-                              <div>
-                                <p className="text-3xl font-semibold text-gray-900">R$ {(rate ?? 0).toFixed(2)}</p>
-                                <p className="text-xs text-gray-400 mt-1">por noite</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-medium text-gray-900">
-                                  {count !== null ? `${count} livre${count !== 1 ? 's' : ''}` : 'Sob consulta'}
-                                </p>
-                                <p className="text-xs text-violet-600 mt-1">Abrir modal</p>
-                              </div>
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'agenda' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px] gap-4 h-full">
-                    <div className="rounded-[24px] border border-gray-200 bg-white p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">Agenda interativa</p>
-                          <p className="text-sm text-gray-500 mt-1">Selecione entrada e saida direto no calendario.</p>
-                        </div>
-                        <div className="inline-flex items-center rounded-full bg-gray-100 p-1">
-                          <button
-                            type="button"
-                            onClick={() => setActiveCalendarField('checkIn')}
-                            className={`rounded-full px-3 py-1.5 text-xs font-medium ${activeCalendarField === 'checkIn' ? 'bg-violet-600 text-white' : 'text-gray-500'}`}
-                          >
-                            Entrada
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setActiveCalendarField('checkOut')}
-                            className={`rounded-full px-3 py-1.5 text-xs font-medium ${activeCalendarField === 'checkOut' ? 'bg-violet-600 text-white' : 'text-gray-500'}`}
-                          >
-                            Saida
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="mt-5">
-                        <div className="flex items-center justify-between">
-                          <button
-                            type="button"
-                            onClick={() => setVisibleMonth(current => shiftMonth(current, -1))}
-                            className="w-9 h-9 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-500 transition-colors flex items-center justify-center"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </button>
-                          <p className="text-sm font-semibold text-gray-900 capitalize">{formatMonthLabel(visibleMonth)}</p>
-                          <button
-                            type="button"
-                            onClick={() => setVisibleMonth(current => shiftMonth(current, 1))}
-                            className="w-9 h-9 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-500 transition-colors flex items-center justify-center"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-7 gap-2 mt-4">
-                          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'].map(day => (
-                            <div key={day} className="text-center text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                              {day}
-                            </div>
+                          {days.map(day => (
+                            <button
+                              key={`${unit.id}-${day.date}`}
+                              type="button"
+                              onClick={() => handleCellClick(unit.id, day.date)}
+                              onDragOver={event => event.preventDefault()}
+                              onDrop={() => handleReservationDrop(unit.id, day.date)}
+                              className={`h-[58px] border-r border-gray-100 border-b border-b-transparent transition-colors ${getStatusStyles(
+                                getUnitStatus(unit.id, day.date)
+                              )} hover:ring-1 hover:ring-violet-200`}
+                            />
                           ))}
 
-                          {calendarCells.map(cell => {
-                            const isPast = cell.date < today
-                            const isCheckIn = cell.date === checkIn
-                            const isCheckOut = cell.date === checkOut
-                            const inRange = cell.date > checkIn && cell.date < checkOut
+                          {unitBlocks.map(block => {
+                            const span = getReservationSpan({
+                              id: block.id,
+                              unitId: block.unitId,
+                              guestName: block.reason,
+                              start: block.start,
+                              end: block.end,
+                              status: 'pre_booking',
+                              channel: 'Recepcao',
+                              occupancy: 0,
+                            })
+
+                            if (!span) return null
+
+                            return (
+                              <div
+                                key={block.id}
+                                className={`z-10 mt-2 mb-2 mx-1 rounded-2xl px-3 py-2 text-xs font-medium text-center ${
+                                  block.type === 'maintenance'
+                                    ? 'bg-amber-500 text-white'
+                                    : 'bg-slate-700 text-white'
+                                }`}
+                                style={{ gridColumn: `${span.columnStart} / span ${span.span}`, gridRow: 1 }}
+                              >
+                                {block.type === 'maintenance' ? 'Manutencao' : 'Bloqueado'}
+                              </div>
+                            )
+                          })}
+
+                          {unitReservations.map(reservation => {
+                            const span = getReservationSpan(reservation)
+                            if (!span) return null
 
                             return (
                               <button
-                                key={cell.date}
+                                key={reservation.id}
                                 type="button"
-                                disabled={isPast}
-                                onClick={() => handleCalendarDateClick(cell.date)}
-                                className={`aspect-square rounded-2xl border text-sm transition-all ${
-                                  isCheckIn || isCheckOut
-                                    ? 'border-violet-600 bg-violet-600 text-white shadow-md'
-                                    : inRange
-                                      ? 'border-violet-200 bg-violet-50 text-violet-700'
-                                      : cell.currentMonth
-                                        ? 'border-gray-200 bg-white text-gray-700 hover:border-violet-200 hover:bg-violet-50'
-                                        : 'border-transparent bg-gray-100 text-gray-300'
-                                } ${isPast ? 'cursor-not-allowed opacity-40' : ''}`}
+                                draggable
+                                onDragStart={() => setDraggingReservationId(reservation.id)}
+                                onDragEnd={() => setDraggingReservationId(null)}
+                                onClick={() => {
+                                  setSelectedUnitId(unit.id)
+                                  setComposer(current => ({
+                                    ...current,
+                                    mode: 'reservation',
+                                    unitId: unit.id,
+                                    start: reservation.start,
+                                    end: reservation.end,
+                                    guestName: reservation.guestName,
+                                    channel: reservation.channel,
+                                    occupancy: reservation.occupancy,
+                                  }))
+                                  setComposerMessage(`Reserva de ${reservation.guestName} carregada para edicao visual.`)
+                                }}
+                                className={`z-20 mt-2 mb-2 mx-1 rounded-2xl px-3 py-2 text-left text-xs shadow-sm ${
+                                  reservation.status === 'occupied'
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-violet-500 text-white'
+                                }`}
+                                style={{ gridColumn: `${span.columnStart} / span ${span.span}`, gridRow: 1 }}
                               >
-                                {Number(cell.date.slice(-2))}
+                                <span className="block font-semibold truncate">{reservation.guestName}</span>
+                                <span className="block opacity-90 mt-0.5">
+                                  {reservation.channel} • {reservation.occupancy} hosp.
+                                </span>
                               </button>
                             )
                           })}
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="rounded-[24px] border border-gray-200 bg-white p-4">
-                        <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Selecao</p>
-                        <div className="mt-4 space-y-2">
-                          <div className="rounded-2xl bg-gray-50 px-4 py-3">
-                            <p className="text-xs text-gray-400">Entrada</p>
-                            <p className="text-lg font-semibold text-gray-900 mt-1">{formatDateBR(checkIn)}</p>
-                          </div>
-                          <div className="rounded-2xl bg-gray-50 px-4 py-3">
-                            <p className="text-xs text-gray-400">Saida</p>
-                            <p className="text-lg font-semibold text-gray-900 mt-1">{formatDateBR(checkOut)}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-[24px] border border-gray-200 bg-white p-4">
-                        <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Atalhos</p>
-                        <div className="mt-4 grid gap-2">
-                          {[2, 3, 5, 7].map(preset => (
-                            <button
-                              key={preset}
-                              type="button"
-                              onClick={() => applyStayPreset(preset)}
-                              className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-left hover:border-violet-200 hover:bg-violet-50 transition-colors"
-                            >
-                              {preset} noite{preset !== 1 ? 's' : ''}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                      )
+                    })}
                   </div>
-                )}
-
-                {activeTab === 'atualizacao' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-4 h-full">
-                    <div className="rounded-[24px] border border-dashed border-violet-300 bg-white p-5">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">Atualizacao de disponibilidade</p>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Mantenha os dados da operacao sincronizados para a consulta comercial.
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".csv,text/csv"
-                            className="hidden"
-                            onChange={handleImportFile}
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={importing}
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-600 text-white text-sm font-medium hover:bg-violet-700 disabled:bg-violet-300 transition-colors"
-                          >
-                            {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                            Atualizar arquivo
-                          </button>
-
-                          {data?.manualSnapshotAvailable && (
-                            <button
-                              type="button"
-                              onClick={handleClearSnapshot}
-                              disabled={clearingSnapshot}
-                              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                            >
-                              {clearingSnapshot ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                              Remover
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="rounded-2xl bg-gray-50 border border-gray-100 px-4 py-3">
-                          <p className="text-xs uppercase tracking-wide text-gray-400">Origem</p>
-                          <p className="text-sm font-medium text-gray-700 mt-1">{data?.importedFileName || 'Atualizacao interna'}</p>
-                        </div>
-                        <div className="rounded-2xl bg-gray-50 border border-gray-100 px-4 py-3">
-                          <p className="text-xs uppercase tracking-wide text-gray-400">Atualizado em</p>
-                          <p className="text-sm font-medium text-gray-700 mt-1">{formatDateTimeBR(data?.importedAt)}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 space-y-3">
-                        {importMessage && (
-                          <div className="flex items-start gap-2 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-                            <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                            <span>{importMessage}</span>
-                          </div>
-                        )}
-
-                        {importError && (
-                          <div className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                            <span>{importError}</span>
-                          </div>
-                        )}
-
-                        {data?.manualWarning && (
-                          <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                            <span>{data.manualWarning}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-[24px] border border-gray-200 bg-white p-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Resumo</p>
-                      <div className="mt-4 space-y-3">
-                        <div className="rounded-2xl bg-violet-50 px-4 py-3">
-                          <p className="text-xs text-violet-500">Categorias no painel</p>
-                          <p className="text-lg font-semibold text-gray-900 mt-1">{rooms.length}</p>
-                        </div>
-                        <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                          <p className="text-xs text-slate-500">Consulta atual</p>
-                          <p className="text-lg font-semibold text-gray-900 mt-1">{formatDateBR(checkIn)} - {formatDateBR(checkOut)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            <aside className="border-t xl:border-t-0 xl:border-l border-gray-100 bg-white/70 p-4 sm:p-5">
-              <div className="rounded-[28px] bg-[#0f172a] text-white p-5 shadow-xl">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-violet-200/80">Destaque da consulta</p>
-                    <h2 className="text-2xl font-semibold mt-2">{selectedRoom ? getRoomName(selectedRoom) : 'Sem categoria'}</h2>
-                    <p className="text-sm text-slate-300 mt-2">
-                      Painel rapido para leitura comercial da melhor opcao selecionada.
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-violet-200">
-                    <WavesLadder className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-400">Tarifa</p>
-                    <p className="text-2xl font-semibold mt-2">R$ {selectedRoom ? (getRate(selectedRoom) ?? 0).toFixed(0) : '0'}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-400">Livres</p>
-                    <p className="text-2xl font-semibold mt-2">
-                      {selectedRoom ? getAvailableCount(selectedRoom) ?? (isAvailableRoom(selectedRoom) ? 1 : 0) : 0}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-3xl bg-white/5 border border-white/10 p-4">
-                  <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                    <span>Ocupacao estimada</span>
-                    <span>{Math.round(selectedRoomOccupancy * 100)}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400"
-                      style={{ width: `${Math.round(selectedRoomOccupancy * 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-3xl bg-gradient-to-br from-violet-500/20 via-fuchsia-500/10 to-sky-500/10 border border-violet-300/20 p-4">
-                  <p className="text-sm font-medium text-white">Indicacao</p>
-                  <p className="text-sm text-slate-200 mt-2 leading-relaxed">
-                    {selectedRoom && isAvailableRoom(selectedRoom)
-                      ? `Boa opcao para oferta imediata, com ${getAvailableCount(selectedRoom) ?? 'algumas'} unidade(s) disponivel(is).`
-                      : 'Revise datas ou sugira outra categoria para manter a conversa avancando.'}
+            <aside className="border-t xl:border-t-0 xl:border-l border-gray-200 bg-white min-h-0 overflow-auto">
+              <div className="p-4 sm:p-5 space-y-4">
+                <div className="rounded-[28px] bg-[#0f172a] p-5 text-white shadow-xl">
+                  <p className="text-xs uppercase tracking-[0.22em] text-violet-200/80">Painel operacional</p>
+                  <h2 className="text-2xl font-semibold mt-2">{selectedUnit ? `Quarto ${selectedUnit.label}` : 'Sem unidade'}</h2>
+                  <p className="text-sm text-slate-300 mt-2">
+                    {selectedUnit ? `${selectedUnit.typeName} • ${selectedUnit.capacity} hospedes` : 'Selecione uma unidade no calendario.'}
                   </p>
+
+                  <div className="grid grid-cols-2 gap-3 mt-5">
+                    <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">Tarifa</p>
+                      <p className="text-2xl font-semibold mt-2">R$ {selectedUnit ? selectedUnit.rate.toFixed(0) : '0'}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">Atualizado</p>
+                      <p className="text-sm font-semibold mt-2">{formatDateTimeBR(data?.importedAt)}</p>
+                    </div>
+                  </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => selectedRoom && setIsRoomModalOpen(true)}
-                  disabled={!selectedRoom}
-                  className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-slate-900 px-4 py-3 text-sm font-semibold hover:bg-slate-100 disabled:opacity-40 transition-colors"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Abrir detalhes completos
-                </button>
+                <div className="rounded-[28px] border border-gray-200 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Criar direto na tela</p>
+                      <p className="text-sm text-gray-500 mt-1">Reserva, bloqueio manual ou manutencao.</p>
+                    </div>
+                    <Plus className="w-4 h-4 text-violet-500" />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 mt-4">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickMode('reservation')}
+                      className={`rounded-2xl px-3 py-2 text-xs font-medium transition-colors ${
+                        composer.mode === 'reservation' ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      Reserva
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickMode('blocked')}
+                      className={`rounded-2xl px-3 py-2 text-xs font-medium transition-colors ${
+                        composer.mode === 'blocked' ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      Bloqueio
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickMode('maintenance')}
+                      className={`rounded-2xl px-3 py-2 text-xs font-medium transition-colors ${
+                        composer.mode === 'maintenance' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      Manutencao
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 mt-4">
+                    <select
+                      value={composer.unitId}
+                      onChange={event => setComposer(current => ({ ...current, unitId: event.target.value }))}
+                      className="rounded-2xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                    >
+                      {units.map(unit => (
+                        <option key={unit.id} value={unit.id}>
+                          Quarto {unit.label} • {unit.typeName}
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        type="date"
+                        value={composer.start}
+                        onChange={event => setComposer(current => ({ ...current, start: event.target.value }))}
+                        className="rounded-2xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      />
+                      <input
+                        type="date"
+                        value={composer.end}
+                        min={addDays(composer.start, 1)}
+                        onChange={event => setComposer(current => ({ ...current, end: event.target.value }))}
+                        className="rounded-2xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      />
+                    </div>
+
+                    {composer.mode === 'reservation' ? (
+                      <>
+                        <input
+                          type="text"
+                          value={composer.guestName}
+                          onChange={event => setComposer(current => ({ ...current, guestName: event.target.value }))}
+                          placeholder="Nome do hospede"
+                          className="rounded-2xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <select
+                            value={composer.channel}
+                            onChange={event => setComposer(current => ({ ...current, channel: event.target.value as Channel }))}
+                            className="rounded-2xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                          >
+                            <option value="WhatsApp">WhatsApp</option>
+                            <option value="Booking.com">Booking.com</option>
+                            <option value="Site">Site</option>
+                            <option value="Recepcao">Recepcao</option>
+                          </select>
+                          <select
+                            value={composer.occupancy}
+                            onChange={event => setComposer(current => ({ ...current, occupancy: Number(event.target.value) }))}
+                            className="rounded-2xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                          >
+                            <option value={1}>1 hospede</option>
+                            <option value={2}>2 hospedes</option>
+                            <option value={3}>3 hospedes</option>
+                            <option value={4}>4 hospedes</option>
+                          </select>
+                        </div>
+                      </>
+                    ) : (
+                      <input
+                        type="text"
+                        value={composer.reason}
+                        onChange={event => setComposer(current => ({ ...current, reason: event.target.value }))}
+                        placeholder={composer.mode === 'maintenance' ? 'Motivo da manutencao' : 'Motivo do bloqueio'}
+                        className="rounded-2xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      />
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleCreateInventoryItem}
+                    className="mt-4 w-full rounded-2xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700 transition-colors"
+                  >
+                    {composer.mode === 'reservation' ? 'Criar reserva' : composer.mode === 'maintenance' ? 'Registrar manutencao' : 'Aplicar bloqueio'}
+                  </button>
+
+                  {composerMessage && <p className="mt-3 text-xs text-violet-600 font-medium">{composerMessage}</p>}
+                </div>
+
+                <div className="rounded-[28px] border border-gray-200 p-4">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500" />
+                    <p className="text-sm font-semibold text-gray-900">Alertas operacionais</p>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {alerts.length === 0 ? (
+                      <p className="text-sm text-gray-500">Sem conflitos criticos nesta janela.</p>
+                    ) : (
+                      alerts.map(alert => (
+                        <div key={alert} className="rounded-2xl bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+                          {alert}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-[28px] border border-gray-200 p-4">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-emerald-500" />
+                    <p className="text-sm font-semibold text-gray-900">Hospedes atuais</p>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {currentGuests.length === 0 ? (
+                      <p className="text-sm text-gray-500">Nenhuma hospedagem ativa hoje.</p>
+                    ) : (
+                      currentGuests.slice(0, 5).map(guest => {
+                        const unit = units.find(item => item.id === guest.unitId)
+                        return (
+                          <div key={guest.id} className="rounded-2xl bg-gray-50 px-3 py-3">
+                            <p className="text-sm font-semibold text-gray-900">{guest.guestName}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Quarto {unit?.label || guest.unitId} • ate {formatDateBR(guest.end)}
+                            </p>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-[28px] border border-gray-200 p-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-violet-500" />
+                    <p className="text-sm font-semibold text-gray-900">Chegadas e reservas</p>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {upcomingArrivals.map(arrival => {
+                      const unit = units.find(item => item.id === arrival.unitId)
+                      return (
+                        <div key={arrival.id} className="rounded-2xl bg-gray-50 px-3 py-3">
+                          <p className="text-sm font-semibold text-gray-900">{arrival.guestName}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {formatDateBR(arrival.start)} • Quarto {unit?.label || arrival.unitId} • {arrival.channel}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             </aside>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-            <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Erro ao buscar disponibilidade</p>
-              <p className="text-xs text-red-600 mt-0.5">{error}</p>
-            </div>
-          </div>
-        )}
-
-        {loading && !data && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
-                <div className="h-6 bg-gray-200 rounded w-1/2 mb-3" />
-                <div className="h-3 bg-gray-200 rounded w-full mb-2" />
-                <div className="h-3 bg-gray-200 rounded w-2/3" />
-              </div>
-            ))}
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
           </div>
         )}
 
         {data?.availabilityError && (
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-orange-700">
-              Tivemos uma oscilacao na consulta automatica e exibimos a ultima atualizacao disponivel para manter a operacao em andamento.
-            </p>
-          </div>
-        )}
-
-        {data?.notConfigured && !data?.manualSnapshotAvailable && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-amber-900">Atualizacao de disponibilidade recomendada</p>
-              <p className="text-sm text-amber-700 mt-1">
-                Para manter a consulta mais precisa, envie uma atualizacao com os dados mais recentes da operacao.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {data && !data.notConfigured && rooms.length === 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
-            <BedDouble className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 font-medium">Sem disponibilidade para o periodo</p>
-            <p className="text-sm text-gray-400 mt-1">Tente outras datas ou atualize a disponibilidade para uma nova consulta.</p>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            Tivemos uma oscilacao na consulta automatica e exibimos a ultima atualizacao disponivel para manter a operacao em andamento.
           </div>
         )}
       </div>
-
-      {isRoomModalOpen && selectedRoom && (
-        <div className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-sm p-4 sm:p-6 flex items-center justify-center">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[30px] bg-white shadow-2xl border border-gray-200">
-            <div className="flex items-start justify-between gap-4 border-b border-gray-100 p-5 sm:p-6">
-              <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-violet-500">Detalhes da categoria</p>
-                <h3 className="text-2xl font-semibold text-gray-900 mt-2">{getRoomName(selectedRoom)}</h3>
-                <p className="text-sm text-gray-500 mt-2">
-                  Resumo objetivo da categoria para consulta e apresentacao.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRoomModalOpen(false)}
-                className="w-10 h-10 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors flex items-center justify-center"
-              >
-                <span className="sr-only">Fechar</span>
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-5 sm:p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="rounded-2xl bg-violet-50 p-4">
-                  <p className="text-xs text-violet-500">Tarifa</p>
-                  <p className="text-2xl font-semibold text-gray-900 mt-2">R$ {(getRate(selectedRoom) ?? 0).toFixed(2)}</p>
-                </div>
-                <div className="rounded-2xl bg-emerald-50 p-4">
-                  <p className="text-xs text-emerald-500">Livres</p>
-                  <p className="text-2xl font-semibold text-gray-900 mt-2">
-                    {getAvailableCount(selectedRoom) ?? (isAvailableRoom(selectedRoom) ? 1 : 0)}
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-sky-50 p-4">
-                  <p className="text-xs text-sky-500">Estadia</p>
-                  <p className="text-2xl font-semibold text-gray-900 mt-2">{nights} noites</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs text-slate-500">Janela</p>
-                  <p className="text-lg font-semibold text-gray-900 mt-2">
-                    {formatDateBR(checkIn)} - {formatDateBR(checkOut)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-[24px] border border-gray-200 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Agenda resumida</p>
-                    <p className="text-sm text-gray-500 mt-1">Leitura rapida dos proximos dias desta categoria.</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400">Ocupacao estimada</p>
-                    <p className="text-sm font-semibold text-gray-900 mt-1">{Math.round(selectedRoomOccupancy * 100)}%</p>
-                  </div>
-                </div>
-
-                <div className="mt-4 h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
-                    style={{ width: `${Math.round(selectedRoomOccupancy * 100)}%` }}
-                  />
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
-                  {timelineDays.map((day, offset) => (
-                    <div
-                      key={offset}
-                      className="rounded-2xl border border-gray-200 bg-gray-50 p-3 text-center"
-                    >
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{day.label}</p>
-                      <p className="text-xs text-gray-500 mt-1">{day.fullDate}</p>
-                      <div
-                        className="mt-3 h-12 rounded-2xl flex items-center justify-center"
-                        style={{
-                          background: isAvailableRoom(selectedRoom)
-                            ? `linear-gradient(180deg, rgba(139, 92, 246, ${getTimelineOpacity(selectedRoomOccupancy, offset)}) 0%, rgba(236, 72, 153, ${Math.max(0.18, getTimelineOpacity(selectedRoomOccupancy, offset) - 0.08)}) 100%)`
-                            : 'linear-gradient(180deg, rgba(229, 231, 235, 1) 0%, rgba(209, 213, 219, 1) 100%)',
-                        }}
-                      >
-                        <span className="rounded-full bg-white/90 px-2 py-1 text-[11px] font-medium text-gray-700 shadow-sm">
-                          {isAvailableRoom(selectedRoom) ? `${Math.max(1, Math.round((1 - selectedRoomOccupancy) * 10))} disp.` : 'Fechado'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-[24px] bg-slate-900 text-white p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-violet-200">
-                    <Wallet className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Indicacao comercial</p>
-                    <p className="text-sm text-slate-300 mt-2 leading-relaxed">
-                      {isAvailableRoom(selectedRoom)
-                        ? `Categoria pronta para apresentar, com leitura simples e disponibilidade atual para o periodo.`
-                        : 'Categoria com maior pressao neste periodo. Vale sugerir outra opcao ou ajustar as datas.'}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsRoomModalOpen(false)}
-                  className="mt-4 w-full rounded-2xl bg-white text-slate-900 px-4 py-3 text-sm font-semibold hover:bg-slate-100 transition-colors"
-                >
-                  Fechar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
