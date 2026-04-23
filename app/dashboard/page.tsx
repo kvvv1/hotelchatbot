@@ -35,6 +35,17 @@ interface Metrics {
   hotLeads: number
 }
 
+const STAGE_LABELS: Record<string, string> = {
+  new_contact: 'Novo contato',
+  in_attendance: 'Em atendimento',
+  checking_availability: 'Consultando disponibilidade',
+  proposal_sent: 'Proposta enviada',
+  negotiating: 'Em negociacao',
+  booking_in_progress: 'Reserva em andamento',
+  booked: 'Reserva confirmada',
+  not_converted: 'Nao convertido',
+}
+
 function MetricCard({
   label,
   value,
@@ -382,7 +393,7 @@ export default function DashboardPage() {
                           : 'bg-violet-100 text-violet-700'
                     }`}
                   >
-                    {lead.stage.replace(/_/g, ' ')}
+                    {STAGE_LABELS[lead.stage] || lead.stage}
                   </span>
                   <ArrowRight className="w-3.5 h-3.5 text-gray-300" />
                 </div>
