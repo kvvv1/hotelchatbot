@@ -848,115 +848,114 @@ export default function QuartosPage() {
 
       {isRoomModalOpen && selectedRoom && (
         <div className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-sm p-4 sm:p-6 flex items-center justify-center">
-          <div className="w-full max-w-3xl rounded-[30px] bg-white shadow-2xl border border-gray-200 overflow-hidden">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[30px] bg-white shadow-2xl border border-gray-200">
             <div className="flex items-start justify-between gap-4 border-b border-gray-100 p-5 sm:p-6">
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] text-violet-500">Detalhes da categoria</p>
                 <h3 className="text-2xl font-semibold text-gray-900 mt-2">{getRoomName(selectedRoom)}</h3>
                 <p className="text-sm text-gray-500 mt-2">
-                  Visao consolidada da categoria para demonstracao, proposta e fechamento.
+                  Resumo objetivo da categoria para consulta e apresentacao.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsRoomModalOpen(false)}
-                className="w-10 h-10 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors"
+                className="w-10 h-10 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors flex items-center justify-center"
               >
                 <span className="sr-only">Fechar</span>
-                <XCircle className="w-5 h-5 mx-auto" />
+                <XCircle className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 p-5 sm:p-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <div className="rounded-2xl bg-violet-50 p-4">
-                    <p className="text-xs text-violet-500">Tarifa</p>
-                    <p className="text-2xl font-semibold text-gray-900 mt-2">R$ {(getRate(selectedRoom) ?? 0).toFixed(2)}</p>
-                  </div>
-                  <div className="rounded-2xl bg-emerald-50 p-4">
-                    <p className="text-xs text-emerald-500">Livres</p>
-                    <p className="text-2xl font-semibold text-gray-900 mt-2">
-                      {getAvailableCount(selectedRoom) ?? (isAvailableRoom(selectedRoom) ? 1 : 0)}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-sky-50 p-4 sm:col-span-1 col-span-2">
-                    <p className="text-xs text-sky-500">Estadia</p>
-                    <p className="text-2xl font-semibold text-gray-900 mt-2">{nights} noites</p>
-                  </div>
+            <div className="p-5 sm:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="rounded-2xl bg-violet-50 p-4">
+                  <p className="text-xs text-violet-500">Tarifa</p>
+                  <p className="text-2xl font-semibold text-gray-900 mt-2">R$ {(getRate(selectedRoom) ?? 0).toFixed(2)}</p>
                 </div>
-
-                <div className="rounded-[24px] border border-gray-200 p-4">
-                  <p className="text-sm font-semibold text-gray-900">Agenda resumida</p>
-                  <div className="mt-4 overflow-x-auto">
-                    <div className="min-w-[520px] grid grid-cols-[160px_repeat(7,minmax(48px,1fr))] gap-2">
-                      <div className="rounded-2xl bg-gray-50 px-4 py-3">
-                        <p className="font-medium text-gray-900">{getRoomName(selectedRoom)}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {getAvailableCount(selectedRoom) ?? 0} unidade(s) livre(s)
-                        </p>
-                      </div>
-
-                      {Array.from({ length: 7 }, (_, offset) => (
-                        <div
-                          key={offset}
-                          className="h-[76px] rounded-2xl border border-white/60 flex flex-col items-center justify-center p-2"
-                          style={{
-                            background: isAvailableRoom(selectedRoom)
-                              ? `linear-gradient(180deg, rgba(139, 92, 246, ${getTimelineOpacity(selectedRoomOccupancy, offset)}) 0%, rgba(236, 72, 153, ${Math.max(0.15, getTimelineOpacity(selectedRoomOccupancy, offset) - 0.08)}) 100%)`
-                              : 'linear-gradient(180deg, rgba(229, 231, 235, 0.95) 0%, rgba(209, 213, 219, 0.95) 100%)',
-                          }}
-                        >
-                          <span className="text-[10px] font-medium text-white/90">{timelineDays[offset]?.label || '-'}</span>
-                          <span className="mt-2 rounded-full bg-white/90 px-2 py-1 text-[11px] font-medium text-gray-700 shadow-sm">
-                            {isAvailableRoom(selectedRoom) ? `${Math.max(1, Math.round((1 - selectedRoomOccupancy) * 10))} disp.` : 'Fechado'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                <div className="rounded-2xl bg-emerald-50 p-4">
+                  <p className="text-xs text-emerald-500">Livres</p>
+                  <p className="text-2xl font-semibold text-gray-900 mt-2">
+                    {getAvailableCount(selectedRoom) ?? (isAvailableRoom(selectedRoom) ? 1 : 0)}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-sky-50 p-4">
+                  <p className="text-xs text-sky-500">Estadia</p>
+                  <p className="text-2xl font-semibold text-gray-900 mt-2">{nights} noites</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-xs text-slate-500">Janela</p>
+                  <p className="text-lg font-semibold text-gray-900 mt-2">
+                    {formatDateBR(checkIn)} - {formatDateBR(checkOut)}
+                  </p>
                 </div>
               </div>
 
-              <div className="rounded-[28px] bg-[#0f172a] text-white p-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center text-violet-200">
+              <div className="rounded-[24px] border border-gray-200 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Agenda resumida</p>
+                    <p className="text-sm text-gray-500 mt-1">Leitura rapida dos proximos dias desta categoria.</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-400">Ocupacao estimada</p>
+                    <p className="text-sm font-semibold text-gray-900 mt-1">{Math.round(selectedRoomOccupancy * 100)}%</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                    style={{ width: `${Math.round(selectedRoomOccupancy * 100)}%` }}
+                  />
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
+                  {timelineDays.map((day, offset) => (
+                    <div
+                      key={offset}
+                      className="rounded-2xl border border-gray-200 bg-gray-50 p-3 text-center"
+                    >
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{day.label}</p>
+                      <p className="text-xs text-gray-500 mt-1">{day.fullDate}</p>
+                      <div
+                        className="mt-3 h-12 rounded-2xl flex items-center justify-center"
+                        style={{
+                          background: isAvailableRoom(selectedRoom)
+                            ? `linear-gradient(180deg, rgba(139, 92, 246, ${getTimelineOpacity(selectedRoomOccupancy, offset)}) 0%, rgba(236, 72, 153, ${Math.max(0.18, getTimelineOpacity(selectedRoomOccupancy, offset) - 0.08)}) 100%)`
+                            : 'linear-gradient(180deg, rgba(229, 231, 235, 1) 0%, rgba(209, 213, 219, 1) 100%)',
+                        }}
+                      >
+                        <span className="rounded-full bg-white/90 px-2 py-1 text-[11px] font-medium text-gray-700 shadow-sm">
+                          {isAvailableRoom(selectedRoom) ? `${Math.max(1, Math.round((1 - selectedRoomOccupancy) * 10))} disp.` : 'Fechado'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[24px] bg-slate-900 text-white p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-violet-200">
                     <Wallet className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-400">Janela atual</p>
-                    <p className="font-semibold mt-1">{formatDateBR(checkIn)} - {formatDateBR(checkOut)}</p>
+                    <p className="text-sm font-medium">Indicacao comercial</p>
+                    <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+                      {isAvailableRoom(selectedRoom)
+                        ? `Categoria pronta para apresentar, com leitura simples e disponibilidade atual para o periodo.`
+                        : 'Categoria com maior pressao neste periodo. Vale sugerir outra opcao ou ajustar as datas.'}
+                    </p>
                   </div>
-                </div>
-
-                <div className="mt-5">
-                  <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                    <span>Ocupacao estimada</span>
-                    <span>{Math.round(selectedRoomOccupancy * 100)}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400"
-                      style={{ width: `${Math.round(selectedRoomOccupancy * 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-3xl bg-white/5 border border-white/10 p-4">
-                  <p className="text-sm font-medium">Indicacao comercial</p>
-                  <p className="text-sm text-slate-300 mt-2 leading-relaxed">
-                    {isAvailableRoom(selectedRoom)
-                      ? `Categoria pronta para oferta imediata, com boa leitura visual para a demo e disponibilidade atual.`
-                      : 'Categoria com maior pressao no periodo. Vale usar esta visao para sugerir uma alternativa ao cliente.'}
-                  </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setIsRoomModalOpen(false)}
-                  className="mt-5 w-full rounded-2xl bg-white text-slate-900 px-4 py-3 text-sm font-semibold hover:bg-slate-100 transition-colors"
+                  className="mt-4 w-full rounded-2xl bg-white text-slate-900 px-4 py-3 text-sm font-semibold hover:bg-slate-100 transition-colors"
                 >
-                  Fechar detalhes
+                  Fechar
                 </button>
               </div>
             </div>
