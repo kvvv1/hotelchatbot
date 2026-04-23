@@ -15,7 +15,6 @@ import {
   Database,
   Trash2,
   Sparkles,
-  Users,
   Wallet,
   WavesLadder,
 } from 'lucide-react'
@@ -255,7 +254,6 @@ export default function QuartosPage() {
   const rooms = data?.availability ?? []
   const selectedRoom = rooms[selectedRoomIndex] ?? rooms[0] ?? null
   const availableRooms = rooms.filter(isAvailableRoom)
-  const unavailableRooms = rooms.filter(room => !isAvailableRoom(room))
   const averageRate =
     availableRooms.length > 0
       ? availableRooms.reduce((total, room) => total + (getRate(room) ?? 0), 0) / availableRooms.length
@@ -564,7 +562,7 @@ export default function QuartosPage() {
       </div>
 
       {data && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-600 via-violet-500 to-fuchsia-500 text-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
@@ -602,19 +600,6 @@ export default function QuartosPage() {
               </div>
               <div className="w-11 h-11 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600">
                 <Calendar className="w-5 h-5" />
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Atencao comercial</p>
-                <p className="text-3xl font-semibold text-gray-900 mt-2">{unavailableRooms.length}</p>
-                <p className="text-sm text-gray-500 mt-1">categorias com indisponibilidade</p>
-              </div>
-              <div className="w-11 h-11 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600">
-                <Users className="w-5 h-5" />
               </div>
             </div>
           </div>
@@ -713,27 +698,21 @@ export default function QuartosPage() {
       )}
 
       {data && rooms.length > 0 && (
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_380px] gap-5">
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5">
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Agenda visual de disponibilidade</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Uma leitura rapida do periodo para identificar pressao de ocupacao e melhor opcao de venda.
+                    Visual simples do periodo para entender disponibilidade e decidir a melhor oferta.
                   </p>
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-gray-50 border border-gray-200 px-3 py-1.5 text-xs text-gray-500">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                  Menor ocupacao
-                  <div className="w-2.5 h-2.5 rounded-full bg-violet-500 ml-2" />
-                  Maior ocupacao
                 </div>
               </div>
 
               <div className="mt-5 overflow-x-auto">
-                <div className="min-w-[720px]">
-                  <div className="grid grid-cols-[220px_repeat(7,minmax(72px,1fr))] gap-2 mb-2">
+                <div className="min-w-[620px]">
+                  <div className="grid grid-cols-[180px_repeat(7,minmax(58px,1fr))] gap-2 mb-2">
                     <div />
                     {Array.from({ length: 7 }, (_, index) => {
                       const day = timelineDays[index]
@@ -759,7 +738,7 @@ export default function QuartosPage() {
                           key={`${getRoomName(room)}-${index}`}
                           type="button"
                           onClick={() => setSelectedRoomIndex(index)}
-                          className={`w-full grid grid-cols-[220px_repeat(7,minmax(72px,1fr))] gap-2 rounded-2xl border p-2 transition-all text-left ${
+                          className={`w-full grid grid-cols-[180px_repeat(7,minmax(58px,1fr))] gap-2 rounded-2xl border p-2 transition-all text-left ${
                             index === selectedRoomIndex
                               ? 'border-violet-300 bg-violet-50/70 shadow-sm'
                               : 'border-gray-200 bg-white hover:border-violet-200 hover:bg-violet-50/30'
@@ -779,7 +758,7 @@ export default function QuartosPage() {
                           {Array.from({ length: 7 }, (_, offset) => (
                             <div
                               key={offset}
-                              className="h-[68px] rounded-xl border border-white/60 flex items-end justify-center p-2"
+                              className="h-[58px] rounded-xl border border-white/60 flex items-end justify-center p-2"
                               style={{
                                 background: available
                                   ? `linear-gradient(180deg, rgba(139, 92, 246, ${getTimelineOpacity(occupancyLevel, offset)}) 0%, rgba(236, 72, 153, ${Math.max(0.15, getTimelineOpacity(occupancyLevel, offset) - 0.08)}) 100%)`
@@ -798,81 +777,16 @@ export default function QuartosPage() {
                 </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {rooms.map((room, index) => {
-                const available = isAvailableRoom(room)
-                const count = getAvailableCount(room)
-                const rate = getRate(room)
-                const name = getRoomName(room)
-
-                return (
-                  <button
-                    key={`${name}-card-${index}`}
-                    type="button"
-                    onClick={() => setSelectedRoomIndex(index)}
-                    className={`bg-white rounded-2xl border shadow-sm p-5 transition-all text-left ${
-                      index === selectedRoomIndex
-                        ? 'border-violet-300 ring-2 ring-violet-100'
-                        : available
-                          ? 'border-gray-200 hover:border-violet-200 hover:shadow-md'
-                          : 'border-gray-100 opacity-70'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${available ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-400'}`}>
-                          <BedDouble className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">{name}</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {room.roomTypeCode || 'Categoria premium'}
-                          </p>
-                        </div>
-                      </div>
-                      <div
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                          available ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                        }`}
-                      >
-                        {available ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                        {available ? 'Pronto para venda' : 'Lotado'}
-                      </div>
-                    </div>
-
-                    {rate !== null && (
-                      <div className="mb-4">
-                        <p className="text-3xl font-semibold text-gray-900">
-                          R$ {rate.toFixed(2)}
-                          <span className="text-sm font-normal text-gray-500">/noite</span>
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Potencial do periodo: R$ {(rate * nights).toFixed(2)}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-500">
-                        {count !== null ? `${count} quarto${count !== 1 ? 's' : ''} disponivel` : 'Disponibilidade sob consulta'}
-                      </span>
-                      <span className="text-violet-600 font-medium">Ver agenda</span>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
           </div>
 
           {selectedRoom && (
-            <div className="bg-[#0f172a] rounded-[28px] border border-slate-800 p-5 text-white shadow-xl h-fit sticky top-6">
+            <div className="bg-[#0f172a] rounded-[28px] border border-slate-800 p-5 text-white shadow-xl h-fit xl:sticky xl:top-6">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-violet-200/80">Agenda da categoria</p>
+                  <p className="text-xs uppercase tracking-[0.28em] text-violet-200/80">Categoria selecionada</p>
                   <h2 className="text-2xl font-semibold mt-2">{getRoomName(selectedRoom)}</h2>
                   <p className="text-sm text-slate-300 mt-2">
-                    Visao detalhada da janela consultada para apoiar reserva, proposta e fechamento.
+                    Resumo rapido para consulta, proposta e decisao comercial.
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-violet-200">
@@ -883,7 +797,7 @@ export default function QuartosPage() {
               <div className="mt-6 rounded-3xl bg-white/5 border border-white/10 p-4">
                 <div className="flex items-end justify-between">
                   <div>
-                    <p className="text-sm text-slate-300">Tarifa sugerida</p>
+                    <p className="text-sm text-slate-300">Tarifa</p>
                     <p className="text-3xl font-semibold mt-1">
                       R$ {(getRate(selectedRoom) ?? 0).toFixed(2)}
                     </p>
@@ -913,44 +827,35 @@ export default function QuartosPage() {
               </div>
 
               <div className="mt-5">
-                <p className="text-sm font-medium text-white">Calendario rapido</p>
-                <div className="grid grid-cols-7 gap-2 mt-3">
-                  {calendarCells.slice(0, 35).map(cell => {
-                    const isCurrentMonth = cell.currentMonth
-                    const inRange = cell.date >= checkIn && cell.date < checkOut
-                    const isBoundary = cell.date === checkIn || cell.date === checkOut
-
-                    return (
-                      <button
-                        key={`sidebar-${cell.date}`}
-                        type="button"
-                        onClick={() => handleCalendarDateClick(cell.date)}
-                        className={`aspect-square rounded-2xl border text-xs transition-all ${
-                          isBoundary
-                            ? 'border-violet-300 bg-violet-400 text-white'
-                            : inRange
-                              ? 'border-violet-300/30 bg-violet-400/20 text-violet-100'
-                              : isCurrentMonth
-                                ? 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
-                                : 'border-transparent bg-white/[0.03] text-slate-500'
-                        }`}
-                      >
-                        <span>{Number(cell.date.slice(-2))}</span>
-                      </button>
-                    )
-                  })}
+                <p className="text-sm font-medium text-white">Resumo da janela</p>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  {timelineDays.slice(0, 4).map((day, index) => (
+                    <div key={`${day.fullDate}-${index}`} className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">{day.label}</p>
+                      <p className="text-sm font-medium mt-1">{day.fullDate}</p>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-xs text-slate-400 mt-3">
-                  Nivel estimado de ocupacao da categoria: {Math.round(selectedRoomOccupancy * 100)}%
-                </p>
+                <div className="mt-4">
+                  <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                    <span>Ocupacao estimada</span>
+                    <span>{Math.round(selectedRoomOccupancy * 100)}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400"
+                      style={{ width: `${Math.round(selectedRoomOccupancy * 100)}%` }}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="mt-5 rounded-3xl bg-gradient-to-br from-violet-500/20 via-fuchsia-500/10 to-sky-500/10 border border-violet-300/20 p-4">
-                <p className="text-sm font-medium text-white">Sugestao de abordagem</p>
+                <p className="text-sm font-medium text-white">Indicacao comercial</p>
                 <p className="text-sm text-slate-200 mt-2 leading-relaxed">
                   {isAvailableRoom(selectedRoom)
-                    ? `Excelente opcao para ofertar agora. Destaque a experiencia, a disponibilidade para ${getAvailableCount(selectedRoom) ?? 'algumas'} unidade(s) e conduza o cliente para fechamento no mesmo atendimento.`
-                    : 'Categoria com alta demanda neste periodo. Vale sugerir alternativa semelhante ou revisar outra janela de datas para nao perder a venda.'}
+                    ? `Boa opcao para oferta imediata, com ${getAvailableCount(selectedRoom) ?? 'algumas'} unidade(s) disponivel(is) neste periodo.`
+                    : 'Categoria com alta procura neste periodo. Vale sugerir outra categoria ou ajustar as datas para preservar a venda.'}
                 </p>
               </div>
             </div>
