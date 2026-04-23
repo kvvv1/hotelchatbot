@@ -14,6 +14,10 @@ import {
   Upload,
   Database,
   Trash2,
+  Sparkles,
+  Users,
+  Wallet,
+  WavesLadder,
 } from 'lucide-react'
 
 interface RoomAvailability {
@@ -42,6 +46,11 @@ interface RoomsResponse {
   importedAt?: string | null
   importedFileName?: string | null
   manualWarning?: string | null
+}
+
+type TimelineDay = {
+  label: string
+  fullDate: string
 }
 
 function addDays(dateStr: string, days: number): string {
@@ -92,6 +101,7 @@ export default function QuartosPage() {
   const [clearingSnapshot, setClearingSnapshot] = useState(false)
   const [importMessage, setImportMessage] = useState<string | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+  const [selectedRoomIndex, setSelectedRoomIndex] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchRooms = useCallback(async (ci: string, co: string) => {
@@ -198,6 +208,45 @@ export default function QuartosPage() {
     Boolean(data?.availabilityError) ||
     Boolean(data?.manualSnapshotAvailable)
 
+  const rooms = data?.availability ?? []
+  const selectedRoom = rooms[selectedRoomIndex] ?? rooms[0] ?? null
+  const availableRooms = rooms.filter(isAvailableRoom)
+  const unavailableRooms = rooms.filter(room => !isAvailableRoom(room))
+  const averageRate =
+    availableRooms.length > 0
+      ? availableRooms.reduce((total, room) => total + (getRate(room) ?? 0), 0) / availableRooms.length
+      : 0
+
+  const timelineDays: TimelineDay[] = Array.from({ length: Math.min(nights, 7) }, (_, index) => {
+    const date = addDays(checkIn, index)
+    return {
+      label: new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }),
+      fullDate: formatDateBR(date),
+    }
+  })
+
+  useEffect(() => {
+    if (!rooms.length) {
+      setSelectedRoomIndex(0)
+      return
+    }
+
+    if (selectedRoomIndex > rooms.length - 1) {
+      setSelectedRoomIndex(0)
+    }
+  }, [rooms.length, selectedRoomIndex])
+
+  function getOccupancyLevel(room: RoomAvailability): number {
+    const availableCount = getAvailableCount(room)
+    const total = room.totalRooms
+    if (typeof availableCount !== 'number' || typeof total !== 'number' || total <= 0) return 0.65
+    return Math.max(0.1, Math.min(0.95, 1 - availableCount / total))
+  }
+
+  function getTimelineOpacity(level: number, offset: number): number {
+    return Math.min(0.95, Math.max(0.18, level - offset * 0.08 + 0.12))
+  }
+
   return (
     <div className="p-4 sm:p-6 max-w-5xl space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -286,6 +335,64 @@ export default function QuartosPage() {
           )}
         </div>
       </div>
+
+      {data && (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-600 via-violet-500 to-fuchsia-500 text-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-violet-100/90">Disponibilidade</p>
+                <p className="text-3xl font-semibold mt-2">{availableRooms.length}</p>
+                <p className="text-sm text-violet-50/90 mt-1">categorias prontas para venda</p>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-white/15 flex items-center justify-center">
+                <Sparkles className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Media de diaria</p>
+                <p className="text-3xl font-semibold text-gray-900 mt-2">
+                  R$ {averageRate > 0 ? averageRate.toFixed(0) : '0'}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">faixa comercial para o periodo</p>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                <Wallet className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-sky-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Janela consultada</p>
+                <p className="text-3xl font-semibold text-gray-900 mt-2">{nights}</p>
+                <p className="text-sm text-gray-500 mt-1">noite{nights !== 1 ? 's' : ''} em analise</p>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600">
+                <Calendar className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Atencao comercial</p>
+                <p className="text-3xl font-semibold text-gray-900 mt-2">{unavailableRooms.length}</p>
+                <p className="text-sm text-gray-500 mt-1">categorias com indisponibilidade</p>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600">
+                <Users className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showManualTools && (
         <div className="bg-white rounded-xl border border-dashed border-violet-300 p-5 shadow-sm space-y-4">
@@ -378,6 +485,234 @@ export default function QuartosPage() {
         </div>
       )}
 
+      {data && rooms.length > 0 && (
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_380px] gap-5">
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Agenda visual de disponibilidade</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Uma leitura rapida do periodo para identificar pressao de ocupacao e melhor opcao de venda.
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full bg-gray-50 border border-gray-200 px-3 py-1.5 text-xs text-gray-500">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                  Menor ocupacao
+                  <div className="w-2.5 h-2.5 rounded-full bg-violet-500 ml-2" />
+                  Maior ocupacao
+                </div>
+              </div>
+
+              <div className="mt-5 overflow-x-auto">
+                <div className="min-w-[720px]">
+                  <div className="grid grid-cols-[220px_repeat(7,minmax(72px,1fr))] gap-2 mb-2">
+                    <div />
+                    {Array.from({ length: 7 }, (_, index) => {
+                      const day = timelineDays[index]
+                      return (
+                        <div key={day?.fullDate || index} className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 text-center">
+                          <p className="text-[11px] uppercase tracking-wide text-gray-400">
+                            {day?.label || '-'}
+                          </p>
+                          <p className="text-xs font-medium text-gray-700 mt-1">{day?.fullDate || '-'}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div className="space-y-2">
+                    {rooms.map((room, index) => {
+                      const occupancyLevel = getOccupancyLevel(room)
+                      const available = isAvailableRoom(room)
+                      const count = getAvailableCount(room)
+
+                      return (
+                        <button
+                          key={`${getRoomName(room)}-${index}`}
+                          type="button"
+                          onClick={() => setSelectedRoomIndex(index)}
+                          className={`w-full grid grid-cols-[220px_repeat(7,minmax(72px,1fr))] gap-2 rounded-2xl border p-2 transition-all text-left ${
+                            index === selectedRoomIndex
+                              ? 'border-violet-300 bg-violet-50/70 shadow-sm'
+                              : 'border-gray-200 bg-white hover:border-violet-200 hover:bg-violet-50/30'
+                          }`}
+                        >
+                          <div className="px-3 py-2">
+                            <p className="font-medium text-gray-900">{getRoomName(room)}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {count !== null
+                                ? `${count} unidade${count !== 1 ? 's' : ''} livre${count !== 1 ? 's' : ''}`
+                                : available
+                                  ? 'Disponibilidade aberta'
+                                  : 'Sem disponibilidade'}
+                            </p>
+                          </div>
+
+                          {Array.from({ length: 7 }, (_, offset) => (
+                            <div
+                              key={offset}
+                              className="h-[68px] rounded-xl border border-white/60 flex items-end justify-center p-2"
+                              style={{
+                                background: available
+                                  ? `linear-gradient(180deg, rgba(139, 92, 246, ${getTimelineOpacity(occupancyLevel, offset)}) 0%, rgba(236, 72, 153, ${Math.max(0.15, getTimelineOpacity(occupancyLevel, offset) - 0.08)}) 100%)`
+                                  : 'linear-gradient(180deg, rgba(229, 231, 235, 0.95) 0%, rgba(209, 213, 219, 0.95) 100%)',
+                              }}
+                            >
+                              <span className="rounded-full bg-white/90 px-2 py-1 text-[11px] font-medium text-gray-700 shadow-sm">
+                                {available ? `${Math.max(1, Math.round((1 - occupancyLevel) * 10))} disp.` : 'Fechado'}
+                              </span>
+                            </div>
+                          ))}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {rooms.map((room, index) => {
+                const available = isAvailableRoom(room)
+                const count = getAvailableCount(room)
+                const rate = getRate(room)
+                const name = getRoomName(room)
+
+                return (
+                  <button
+                    key={`${name}-card-${index}`}
+                    type="button"
+                    onClick={() => setSelectedRoomIndex(index)}
+                    className={`bg-white rounded-2xl border shadow-sm p-5 transition-all text-left ${
+                      index === selectedRoomIndex
+                        ? 'border-violet-300 ring-2 ring-violet-100'
+                        : available
+                          ? 'border-gray-200 hover:border-violet-200 hover:shadow-md'
+                          : 'border-gray-100 opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${available ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-400'}`}>
+                          <BedDouble className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{name}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {room.roomTypeCode || 'Categoria premium'}
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                          available ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                        }`}
+                      >
+                        {available ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                        {available ? 'Pronto para venda' : 'Lotado'}
+                      </div>
+                    </div>
+
+                    {rate !== null && (
+                      <div className="mb-4">
+                        <p className="text-3xl font-semibold text-gray-900">
+                          R$ {rate.toFixed(2)}
+                          <span className="text-sm font-normal text-gray-500">/noite</span>
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Potencial do periodo: R$ {(rate * nights).toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">
+                        {count !== null ? `${count} quarto${count !== 1 ? 's' : ''} disponivel` : 'Disponibilidade sob consulta'}
+                      </span>
+                      <span className="text-violet-600 font-medium">Ver agenda</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {selectedRoom && (
+            <div className="bg-[#0f172a] rounded-[28px] border border-slate-800 p-5 text-white shadow-xl h-fit sticky top-6">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.28em] text-violet-200/80">Agenda da categoria</p>
+                  <h2 className="text-2xl font-semibold mt-2">{getRoomName(selectedRoom)}</h2>
+                  <p className="text-sm text-slate-300 mt-2">
+                    Visao detalhada da janela consultada para apoiar reserva, proposta e fechamento.
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-violet-200">
+                  <WavesLadder className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-3xl bg-white/5 border border-white/10 p-4">
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-sm text-slate-300">Tarifa sugerida</p>
+                    <p className="text-3xl font-semibold mt-1">
+                      R$ {(getRate(selectedRoom) ?? 0).toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-slate-300">Periodo</p>
+                    <p className="text-sm font-medium mt-1">
+                      {formatDateBR(checkIn)} a {formatDateBR(checkOut)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Unidades livres</p>
+                    <p className="text-2xl font-semibold mt-2">
+                      {getAvailableCount(selectedRoom) ?? (isAvailableRoom(selectedRoom) ? 1 : 0)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Potencial da estadia</p>
+                    <p className="text-2xl font-semibold mt-2">
+                      R$ {((getRate(selectedRoom) ?? 0) * nights).toFixed(0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-sm font-medium text-white">Calendario rapido</p>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  {timelineDays.map((day, index) => (
+                    <div key={`${day.fullDate}-${index}`} className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">{day.label}</p>
+                      <p className="text-sm font-medium mt-1">{day.fullDate}</p>
+                      <p className="text-xs text-violet-200 mt-2">
+                        {isAvailableRoom(selectedRoom) ? 'Agenda aberta para reserva' : 'Data com ocupacao completa'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-3xl bg-gradient-to-br from-violet-500/20 via-fuchsia-500/10 to-sky-500/10 border border-violet-300/20 p-4">
+                <p className="text-sm font-medium text-white">Sugestao de abordagem</p>
+                <p className="text-sm text-slate-200 mt-2 leading-relaxed">
+                  {isAvailableRoom(selectedRoom)
+                    ? `Excelente opcao para ofertar agora. Destaque a experiencia, a disponibilidade para ${getAvailableCount(selectedRoom) ?? 'algumas'} unidade(s) e conduza o cliente para fechamento no mesmo atendimento.`
+                    : 'Categoria com alta demanda neste periodo. Vale sugerir alternativa semelhante ou revisar outra janela de datas para nao perder a venda.'}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
           <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
@@ -410,84 +745,15 @@ export default function QuartosPage() {
         </div>
       )}
 
-      {data && !data.notConfigured && (
+      {data && !data.notConfigured && rooms.length === 0 && (
         <>
-          {data.availability.length === 0 && !loading ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
-              <BedDouble className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium">Sem disponibilidade para o periodo</p>
-              <p className="text-sm text-gray-400 mt-1">
-                Tente outras datas ou atualize a disponibilidade para uma nova consulta.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.availability.map((room, i) => {
-                const available = isAvailableRoom(room)
-                const count = getAvailableCount(room)
-                const rate = getRate(room)
-                const name = getRoomName(room)
-
-                return (
-                  <div
-                    key={i}
-                    className={`bg-white rounded-xl border shadow-sm p-5 transition-all ${
-                      available ? 'border-gray-200 hover:border-violet-300 hover:shadow-md' : 'border-gray-100 opacity-60'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${available ? 'bg-violet-100' : 'bg-gray-100'}`}>
-                          <BedDouble className={`w-4 h-4 ${available ? 'text-violet-600' : 'text-gray-400'}`} />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900 text-sm leading-tight">{name}</p>
-                          {room.roomTypeCode && room.roomTypeCode !== name && (
-                            <p className="text-[10px] text-gray-400">{room.roomTypeCode}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div
-                        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        }`}
-                      >
-                        {available ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                        {available ? 'Disponivel' : 'Indisponivel'}
-                      </div>
-                    </div>
-
-                    {rate !== null && (
-                      <div className="mb-3">
-                        <p className="text-2xl font-bold text-gray-900">
-                          R$ {rate.toFixed(2)}
-                          <span className="text-sm font-normal text-gray-500">/noite</span>
-                        </p>
-                        {nights > 1 && (
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            Total: R$ {(rate * nights).toFixed(2)} - {nights} noites
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {count !== null && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            count > 3 ? 'bg-green-400' : count > 0 ? 'bg-yellow-400' : 'bg-red-400'
-                          }`}
-                        />
-                        {count > 0 ? `${count} quarto${count !== 1 ? 's' : ''} disponivel` : 'Sem disponibilidade'}
-                        {room.totalRooms ? ` / ${room.totalRooms} total` : ''}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
+          <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
+            <BedDouble className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500 font-medium">Sem disponibilidade para o periodo</p>
+            <p className="text-sm text-gray-400 mt-1">
+              Tente outras datas ou atualize a disponibilidade para uma nova consulta.
+            </p>
+          </div>
           <p className="text-xs text-gray-400 text-center">
             {data.source === 'manual'
               ? `Dados atualizados${data.importedAt ? ` em ${formatDateTimeBR(data.importedAt)}` : ''} - ${data.availability.length} tipo(s) de quarto`
