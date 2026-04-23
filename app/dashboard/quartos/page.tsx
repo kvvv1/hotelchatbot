@@ -207,7 +207,7 @@ export default function QuartosPage() {
             Quartos & Disponibilidade
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Consulte disponibilidade em tempo real via HITS ou use snapshot manual por CSV.
+            Consulte disponibilidade e acompanhe as tarifas para o periodo selecionado.
           </p>
         </div>
 
@@ -215,7 +215,7 @@ export default function QuartosPage() {
           {data?.source && (
             <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium ${sourceBadge}`}>
               <Database className="w-3.5 h-3.5" />
-              {data.source === 'manual' ? 'Snapshot manual' : 'HITS em tempo real'}
+              {data.source === 'manual' ? 'Disponibilidade atualizada' : 'Disponibilidade online'}
             </span>
           )}
 
@@ -291,9 +291,9 @@ export default function QuartosPage() {
         <div className="bg-white rounded-xl border border-dashed border-violet-300 p-5 shadow-sm space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="font-medium text-gray-900">Importacao manual por CSV</p>
+              <p className="font-medium text-gray-900">Atualizacao de disponibilidade</p>
               <p className="text-sm text-gray-500 mt-1">
-                Use esta opcao enquanto a API oficial do HITS nao estiver liberada. O sistema espera colunas como tipo de quarto, disponiveis, total e tarifa.
+                Envie um arquivo com a disponibilidade mais recente para manter a consulta de quartos atualizada.
               </p>
             </div>
 
@@ -313,7 +313,7 @@ export default function QuartosPage() {
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-600 text-white text-sm font-medium hover:bg-violet-700 disabled:bg-violet-300 transition-colors"
               >
                 {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                Importar CSV
+                Atualizar arquivo
               </button>
 
               {data?.manualSnapshotAvailable && (
@@ -324,7 +324,7 @@ export default function QuartosPage() {
                   className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
                 >
                   {clearingSnapshot ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  Limpar snapshot
+                  Remover arquivo
                 </button>
               )}
             </div>
@@ -333,11 +333,11 @@ export default function QuartosPage() {
           {(data?.importedAt || data?.importedFileName) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
-                <p className="text-xs uppercase tracking-wide text-gray-400">Ultimo arquivo</p>
-                <p className="text-gray-700 font-medium mt-1">{data.importedFileName || 'Nao informado'}</p>
+                <p className="text-xs uppercase tracking-wide text-gray-400">Origem dos dados</p>
+                <p className="text-gray-700 font-medium mt-1">{data.importedFileName || 'Atualizacao interna'}</p>
               </div>
               <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
-                <p className="text-xs uppercase tracking-wide text-gray-400">Importado em</p>
+                <p className="text-xs uppercase tracking-wide text-gray-400">Atualizado em</p>
                 <p className="text-gray-700 font-medium mt-1">{formatDateTimeBR(data.importedAt)}</p>
               </div>
             </div>
@@ -370,9 +370,9 @@ export default function QuartosPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-amber-900">HITS PMS nao configurado</p>
+            <p className="font-medium text-amber-900">Atualizacao de disponibilidade recomendada</p>
             <p className="text-sm text-amber-700 mt-1">
-              Enquanto a homologacao da API nao sai, importe um CSV exportado do PMS para manter a consulta de quartos funcionando.
+              Para manter a consulta de quartos mais precisa, envie uma atualizacao com os dados mais recentes da operacao.
             </p>
           </div>
         </div>
@@ -405,9 +405,7 @@ export default function QuartosPage() {
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-orange-700">
-            {data.source === 'manual'
-              ? `A consulta ao HITS falhou e o sistema usou o snapshot manual. Detalhe tecnico: ${data.availabilityError}`
-              : `HITS retornou erro: ${data.availabilityError}`}
+            Tivemos uma oscilacao na consulta automatica e exibimos a ultima atualizacao disponivel para manter a operacao em andamento.
           </p>
         </div>
       )}
@@ -419,7 +417,7 @@ export default function QuartosPage() {
               <BedDouble className="w-10 h-10 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 font-medium">Sem disponibilidade para o periodo</p>
               <p className="text-sm text-gray-400 mt-1">
-                Tente outras datas ou atualize o snapshot manual com um CSV mais recente.
+                Tente outras datas ou atualize a disponibilidade para uma nova consulta.
               </p>
             </div>
           ) : (
@@ -492,8 +490,8 @@ export default function QuartosPage() {
 
           <p className="text-xs text-gray-400 text-center">
             {data.source === 'manual'
-              ? `Dados vindos de snapshot manual${data.importedAt ? ` importado em ${formatDateTimeBR(data.importedAt)}` : ''} - ${data.availability.length} tipo(s) de quarto`
-              : `Dados obtidos do HITS PMS em tempo real - ${data.availability.length} tipo(s) de quarto`}
+              ? `Dados atualizados${data.importedAt ? ` em ${formatDateTimeBR(data.importedAt)}` : ''} - ${data.availability.length} tipo(s) de quarto`
+              : `Consulta online concluida - ${data.availability.length} tipo(s) de quarto`}
           </p>
         </>
       )}

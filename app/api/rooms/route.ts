@@ -64,8 +64,8 @@ function buildDemoResponse(checkIn: string, checkOut: string) {
     source: 'manual' as const,
     manualSnapshotAvailable: true,
     importedAt: new Date().toISOString(),
-    importedFileName: 'demo-apresentacao-hotel-macuco',
-    manualWarning: 'Exibindo disponibilidade demonstrativa para apresentacao comercial.',
+    importedFileName: 'Atualizacao interna',
+    manualWarning: null,
     availabilityError: null,
     occupationError: null,
   }
