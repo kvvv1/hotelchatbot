@@ -53,6 +53,11 @@ type TimelineDay = {
   fullDate: string
 }
 
+type CalendarCell = {
+  date: string
+  currentMonth: boolean
+}
+
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr)
   d.setDate(d.getDate() + days)
@@ -90,10 +95,49 @@ function getRoomName(room: RoomAvailability): string {
   return String(room.roomTypeName || room.name || room.roomTypeCode || `Tipo ${room.roomTypeId ?? '?'}`)
 }
 
+function startOfMonth(monthKey: string): string {
+  return `${monthKey}-01`
+}
+
+function shiftMonth(monthKey: string, delta: number): string {
+  const [year, month] = monthKey.split('-').map(Number)
+  const date = new Date(year, month - 1 + delta, 1)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+function formatMonthLabel(monthKey: string): string {
+  const [year, month] = monthKey.split('-').map(Number)
+  return new Date(year, month - 1, 1).toLocaleDateString('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+function buildCalendarCells(monthKey: string): CalendarCell[] {
+  const monthStart = new Date(`${startOfMonth(monthKey)}T12:00:00`)
+  const firstDay = new Date(monthStart)
+  firstDay.setDate(1)
+
+  const gridStart = new Date(firstDay)
+  gridStart.setDate(firstDay.getDate() - firstDay.getDay())
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const current = new Date(gridStart)
+    current.setDate(gridStart.getDate() + index)
+    const date = current.toISOString().slice(0, 10)
+    return {
+      date,
+      currentMonth: current.getMonth() === monthStart.getMonth(),
+    }
+  })
+}
+
 export default function QuartosPage() {
   const today = new Date().toISOString().slice(0, 10)
   const [checkIn, setCheckIn] = useState(today)
   const [checkOut, setCheckOut] = useState(addDays(today, 7))
+  const [visibleMonth, setVisibleMonth] = useState(today.slice(0, 7))
+  const [activeCalendarField, setActiveCalendarField] = useState<'checkIn' | 'checkOut'>('checkIn')
   const [data, setData] = useState<RoomsResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -236,6 +280,10 @@ export default function QuartosPage() {
     }
   }, [rooms.length, selectedRoomIndex])
 
+  useEffect(() => {
+    setVisibleMonth(checkIn.slice(0, 7))
+  }, [checkIn])
+
   function getOccupancyLevel(room: RoomAvailability): number {
     const availableCount = getAvailableCount(room)
     const total = room.totalRooms
@@ -247,8 +295,40 @@ export default function QuartosPage() {
     return Math.min(0.95, Math.max(0.18, level - offset * 0.08 + 0.12))
   }
 
+  function applyStayPreset(nextNights: number) {
+    const nextCheckOut = addDays(checkIn, nextNights)
+    setCheckOut(nextCheckOut)
+    setActiveCalendarField('checkIn')
+    fetchRooms(checkIn, nextCheckOut)
+  }
+
+  function handleCalendarDateClick(date: string) {
+    if (date < today) return
+
+    if (activeCalendarField === 'checkIn') {
+      const nextCheckOut = date >= checkOut ? addDays(date, 1) : checkOut
+      setCheckIn(date)
+      setCheckOut(nextCheckOut)
+      setActiveCalendarField('checkOut')
+      return
+    }
+
+    if (date <= checkIn) {
+      setCheckIn(date)
+      setCheckOut(addDays(date, 1))
+      setActiveCalendarField('checkOut')
+      return
+    }
+
+    setCheckOut(date)
+    setActiveCalendarField('checkIn')
+  }
+
+  const calendarCells = buildCalendarCells(visibleMonth)
+  const selectedRoomOccupancy = selectedRoom ? getOccupancyLevel(selectedRoom) : 0.5
+
   return (
-    <div className="p-4 sm:p-6 max-w-5xl space-y-5">
+    <div className="p-4 sm:p-6 max-w-7xl space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -279,60 +359,207 @@ export default function QuartosPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => shiftDates(-1)}
-              className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => shiftDates(1)}
-              className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_430px] gap-5">
+        <div className="bg-white rounded-[28px] border border-gray-200 p-5 shadow-sm">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => shiftDates(-1)}
+                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => shiftDates(1)}
+                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-end gap-3 flex-wrap">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1 font-medium">Check-in</label>
+                <input
+                  type="date"
+                  value={checkIn}
+                  min={today}
+                  onChange={e => setCheckIn(e.target.value)}
+                  onFocus={() => setActiveCalendarField('checkIn')}
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1 font-medium">Check-out</label>
+                <input
+                  type="date"
+                  value={checkOut}
+                  min={addDays(checkIn, 1)}
+                  onChange={e => setCheckOut(e.target.value)}
+                  onFocus={() => setActiveCalendarField('checkOut')}
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                />
+              </div>
+              <button
+                onClick={handleSearch}
+                disabled={loading || checkIn >= checkOut}
+                className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white font-medium rounded-lg text-sm transition-colors"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
+                Consultar
+              </button>
+            </div>
+
+            {data && (
+              <div className="ml-auto text-sm text-gray-500">
+                <span className="font-medium text-gray-900">{nights}</span> noite{nights !== 1 ? 's' : ''} -{' '}
+                {formatDateBR(checkIn)} ate {formatDateBR(checkOut)}
+              </div>
+            )}
           </div>
 
-          <div className="flex items-end gap-3 flex-wrap">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1 font-medium">Check-in</label>
-              <input
-                type="date"
-                value={checkIn}
-                min={today}
-                onChange={e => setCheckIn(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1 font-medium">Check-out</label>
-              <input
-                type="date"
-                value={checkOut}
-                min={addDays(checkIn, 1)}
-                onChange={e => setCheckOut(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
-              />
-            </div>
-            <button
-              onClick={handleSearch}
-              disabled={loading || checkIn >= checkOut}
-              className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white font-medium rounded-lg text-sm transition-colors"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
-              Consultar
-            </button>
-          </div>
+          <div className="mt-5 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_240px] gap-5">
+            <div className="rounded-[24px] border border-gray-200 bg-gradient-to-br from-white to-violet-50/40 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Agenda interativa</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Clique nas datas para montar a estadia e visualize o periodo com mais contexto.
+                  </p>
+                </div>
+                <div className="inline-flex items-center rounded-full bg-white border border-gray-200 p-1 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setActiveCalendarField('checkIn')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                      activeCalendarField === 'checkIn' ? 'bg-violet-600 text-white' : 'text-gray-500'
+                    }`}
+                  >
+                    Entrada
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveCalendarField('checkOut')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                      activeCalendarField === 'checkOut' ? 'bg-violet-600 text-white' : 'text-gray-500'
+                    }`}
+                  >
+                    Saida
+                  </button>
+                </div>
+              </div>
 
-          {data && (
-            <div className="ml-auto text-sm text-gray-500">
-              <span className="font-medium text-gray-900">{nights}</span> noite{nights !== 1 ? 's' : ''} -{' '}
-              {formatDateBR(checkIn)} ate {formatDateBR(checkOut)}
+              <div className="mt-5">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleMonth(current => shiftMonth(current, -1))}
+                    className="w-9 h-9 rounded-xl border border-gray-200 hover:bg-white text-gray-500 transition-colors flex items-center justify-center"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <p className="text-sm font-semibold text-gray-900 capitalize">{formatMonthLabel(visibleMonth)}</p>
+                  <button
+                    type="button"
+                    onClick={() => setVisibleMonth(current => shiftMonth(current, 1))}
+                    className="w-9 h-9 rounded-xl border border-gray-200 hover:bg-white text-gray-500 transition-colors flex items-center justify-center"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-7 gap-2 mt-4">
+                  {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'].map(day => (
+                    <div key={day} className="text-center text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                      {day}
+                    </div>
+                  ))}
+
+                  {calendarCells.map(cell => {
+                    const isPast = cell.date < today
+                    const isCheckIn = cell.date === checkIn
+                    const isCheckOut = cell.date === checkOut
+                    const inRange = cell.date > checkIn && cell.date < checkOut
+
+                    return (
+                      <button
+                        key={cell.date}
+                        type="button"
+                        disabled={isPast}
+                        onClick={() => handleCalendarDateClick(cell.date)}
+                        className={`aspect-square rounded-2xl border text-sm transition-all ${
+                          isCheckIn || isCheckOut
+                            ? 'border-violet-600 bg-violet-600 text-white shadow-md'
+                            : inRange
+                              ? 'border-violet-200 bg-violet-50 text-violet-700'
+                              : cell.currentMonth
+                                ? 'border-gray-200 bg-white text-gray-700 hover:border-violet-200 hover:bg-violet-50'
+                                : 'border-transparent bg-gray-50 text-gray-300'
+                        } ${isPast ? 'cursor-not-allowed opacity-40' : ''}`}
+                      >
+                        <span className="block text-center">
+                          {Number(cell.date.slice(-2))}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
-          )}
+
+            <div className="space-y-3">
+              <div className="rounded-[24px] border border-gray-200 bg-white p-4 shadow-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Selecao atual</p>
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveCalendarField('checkIn')}
+                    className={`rounded-2xl border p-3 text-left transition-colors ${
+                      activeCalendarField === 'checkIn' ? 'border-violet-300 bg-violet-50' : 'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    <p className="text-xs uppercase tracking-wide text-gray-400">Entrada</p>
+                    <p className="text-lg font-semibold text-gray-900 mt-1">{formatDateBR(checkIn)}</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveCalendarField('checkOut')}
+                    className={`rounded-2xl border p-3 text-left transition-colors ${
+                      activeCalendarField === 'checkOut' ? 'border-violet-300 bg-violet-50' : 'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    <p className="text-xs uppercase tracking-wide text-gray-400">Saida</p>
+                    <p className="text-lg font-semibold text-gray-900 mt-1">{formatDateBR(checkOut)}</p>
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-gray-200 bg-white p-4 shadow-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Atalhos de estadia</p>
+                <div className="grid grid-cols-1 gap-2 mt-4">
+                  {[2, 3, 5, 7].map(preset => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => applyStayPreset(preset)}
+                      className="flex items-center justify-between rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 hover:border-violet-200 hover:bg-violet-50 transition-colors"
+                    >
+                      <span>{preset} noite{preset !== 1 ? 's' : ''}</span>
+                      <span className="text-violet-600 font-medium">Aplicar</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-violet-200 bg-gradient-to-br from-violet-600 to-fuchsia-500 p-4 text-white shadow-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-violet-100/80">Leitura do periodo</p>
+                <p className="text-2xl font-semibold mt-3">{nights} noite{nights !== 1 ? 's' : ''}</p>
+                <p className="text-sm text-violet-50/90 mt-2">
+                  Janela pronta para consulta comercial com chegada em {formatDateBR(checkIn)} e saida em {formatDateBR(checkOut)}.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -687,17 +914,35 @@ export default function QuartosPage() {
 
               <div className="mt-5">
                 <p className="text-sm font-medium text-white">Calendario rapido</p>
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                  {timelineDays.map((day, index) => (
-                    <div key={`${day.fullDate}-${index}`} className="rounded-2xl bg-white/5 border border-white/10 p-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">{day.label}</p>
-                      <p className="text-sm font-medium mt-1">{day.fullDate}</p>
-                      <p className="text-xs text-violet-200 mt-2">
-                        {isAvailableRoom(selectedRoom) ? 'Agenda aberta para reserva' : 'Data com ocupacao completa'}
-                      </p>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-7 gap-2 mt-3">
+                  {calendarCells.slice(0, 35).map(cell => {
+                    const isCurrentMonth = cell.currentMonth
+                    const inRange = cell.date >= checkIn && cell.date < checkOut
+                    const isBoundary = cell.date === checkIn || cell.date === checkOut
+
+                    return (
+                      <button
+                        key={`sidebar-${cell.date}`}
+                        type="button"
+                        onClick={() => handleCalendarDateClick(cell.date)}
+                        className={`aspect-square rounded-2xl border text-xs transition-all ${
+                          isBoundary
+                            ? 'border-violet-300 bg-violet-400 text-white'
+                            : inRange
+                              ? 'border-violet-300/30 bg-violet-400/20 text-violet-100'
+                              : isCurrentMonth
+                                ? 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
+                                : 'border-transparent bg-white/[0.03] text-slate-500'
+                        }`}
+                      >
+                        <span>{Number(cell.date.slice(-2))}</span>
+                      </button>
+                    )
+                  })}
                 </div>
+                <p className="text-xs text-slate-400 mt-3">
+                  Nivel estimado de ocupacao da categoria: {Math.round(selectedRoomOccupancy * 100)}%
+                </p>
               </div>
 
               <div className="mt-5 rounded-3xl bg-gradient-to-br from-violet-500/20 via-fuchsia-500/10 to-sky-500/10 border border-violet-300/20 p-4">
