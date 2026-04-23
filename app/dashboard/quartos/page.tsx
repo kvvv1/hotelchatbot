@@ -109,11 +109,6 @@ function formatDateBR(dateStr: string): string {
   return `${day}/${month}/${year}`
 }
 
-function formatDateTimeBR(dateStr?: string | null): string {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-}
-
 function monthStart(monthKey: string): string {
   return `${monthKey}-01`
 }
@@ -803,25 +798,6 @@ export default function QuartosPage() {
 
             <aside className="border-t xl:border-t-0 xl:border-l border-gray-200 bg-white min-h-0 overflow-auto">
               <div className="p-4 sm:p-5 space-y-4">
-                <div className="rounded-[28px] bg-[#0f172a] p-5 text-white shadow-xl">
-                  <p className="text-xs uppercase tracking-[0.22em] text-violet-200/80">Painel operacional</p>
-                  <h2 className="text-2xl font-semibold mt-2">{selectedUnit ? `Quarto ${selectedUnit.label}` : 'Sem unidade'}</h2>
-                  <p className="text-sm text-slate-300 mt-2">
-                    {selectedUnit ? `${selectedUnit.typeName} • ${selectedUnit.capacity} hospedes` : 'Selecione uma unidade no calendario.'}
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-3 mt-5">
-                    <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">Tarifa</p>
-                      <p className="text-2xl font-semibold mt-2">R$ {selectedUnit ? selectedUnit.rate.toFixed(0) : '0'}</p>
-                    </div>
-                    <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">Atualizado</p>
-                      <p className="text-sm font-semibold mt-2">{formatDateTimeBR(data?.importedAt)}</p>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="rounded-[28px] border border-gray-200 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -1025,4 +1001,5 @@ export default function QuartosPage() {
     </div>
   )
 }
+
 
