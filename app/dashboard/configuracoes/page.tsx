@@ -136,6 +136,8 @@ export default function ConfiguracoesPage() {
   const [saveCredsError, setSaveCredsError] = useState<string | null>(null)
   const [testZapi, setTestZapi] = useState<TestState>({ status: 'idle' })
   const [testHits, setTestHits] = useState<TestState>({ status: 'idle' })
+  const [publicWebhookUrl, setPublicWebhookUrl] = useState('')
+  const [copiedWebhook, setCopiedWebhook] = useState(false)
 
   // Hours tab
   const [hoursEnabled, setHoursEnabled] = useState(false)
@@ -156,6 +158,12 @@ export default function ConfiguracoesPage() {
   const [newTemplate, setNewTemplate] = useState('')
   const [savingTemplates, setSavingTemplates] = useState(false)
   const [savedTemplates, setSavedTemplates] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setPublicWebhookUrl(`${window.location.origin}/api/webhooks/zapi`)
+    }
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -410,6 +418,13 @@ export default function ConfiguracoesPage() {
     setTimeout(() => setTestZapi({ status: 'idle' }), 10000)
   }
 
+  async function handleCopyWebhookUrl() {
+    if (!publicWebhookUrl || typeof navigator === 'undefined' || !navigator.clipboard) return
+    await navigator.clipboard.writeText(publicWebhookUrl)
+    setCopiedWebhook(true)
+    setTimeout(() => setCopiedWebhook(false), 2000)
+  }
+
   async function handleTestHits() {
     if (!hitsForm.hits_api_url || !hitsForm.hits_tenant_name) return
     setTestHits({ status: 'testing' })
@@ -598,6 +613,31 @@ export default function ConfiguracoesPage() {
                 Testar conexão
               </button>
               <TestBadge state={testZapi} />
+            </div>
+
+            <div className="rounded-lg border border-violet-200 bg-violet-50/60 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Webhook da Z-API</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Configure esta URL no painel da Z-API para receber mensagens reais no sistema.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyWebhookUrl}
+                  disabled={!publicWebhookUrl}
+                  className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  {copiedWebhook ? 'Copiado' : 'Copiar URL'}
+                </button>
+              </div>
+              <div className="rounded-lg bg-white border border-violet-100 px-3 py-2 text-xs font-mono text-gray-700 break-all">
+                {publicWebhookUrl || 'Abra esta tela no dominio publico do sistema para gerar a URL correta.'}
+              </div>
+              <p className="text-xs text-violet-700">
+                Checklist: instancia conectada, webhook configurado, evento de mensagem habilitado e numero apontando para esta instância.
+              </p>
             </div>
           </div>
 

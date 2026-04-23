@@ -23,10 +23,10 @@ const STAGE_LABELS: Record<string, string> = {
   in_attendance: 'Em atendimento',
   checking_availability: 'Consultando disponibilidade',
   proposal_sent: 'Proposta enviada',
-  negotiating: 'Em negociação',
+  negotiating: 'Em negociacao',
   booking_in_progress: 'Reserva em andamento',
   booked: 'Reserva confirmada',
-  not_converted: 'Não convertido',
+  not_converted: 'Nao convertido',
 }
 
 const STAGE_COLORS: Record<string, string> = {
@@ -58,7 +58,7 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
   const [newTag, setNewTag] = useState('')
 
   function formatDate(dateStr?: string) {
-    if (!dateStr) return '—'
+    if (!dateStr) return '-'
     const [year, month, day] = dateStr.split('-')
     return `${day}/${month}/${year}`
   }
@@ -126,7 +126,7 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
-          <h3 className="font-semibold text-gray-900 text-sm">Dados do Lead</h3>
+          <h3 className="font-semibold text-gray-900 text-sm">Dados do lead</h3>
         </div>
 
         {lead.status !== 'closed' && (
@@ -144,7 +144,7 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
       {confirmClose && (
         <div className="mx-4 mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm text-red-800 font-medium mb-2">Encerrar esta conversa?</p>
-          <p className="text-xs text-red-600 mb-3">O lead ficará como encerrado e sairá da inbox.</p>
+          <p className="text-xs text-red-600 mb-3">O lead ficara como encerrado e saira da inbox.</p>
           <div className="flex gap-2">
             <button
               onClick={handleClose}
@@ -166,7 +166,7 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-5">
         <div>
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Estágio</p>
+          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Estagio</p>
           <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${STAGE_COLORS[lead.stage] || 'bg-gray-100 text-gray-700'}`}>
             {STAGE_LABELS[lead.stage] || lead.stage}
           </span>
@@ -210,14 +210,14 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
         </div>
 
         <div>
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">Informações coletadas pela IA</p>
+          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">Informacoes coletadas pela IA</p>
           <div className="space-y-3">
             {ctx.checkIn && (
               <div className="flex items-start gap-2.5">
                 <Calendar className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-xs text-gray-500">Check-in / Check-out</p>
-                  <p className="text-sm text-gray-900 font-medium">{formatDate(ctx.checkIn)} até {formatDate(ctx.checkOut)}</p>
+                  <p className="text-sm text-gray-900 font-medium">{formatDate(ctx.checkIn)} ate {formatDate(ctx.checkOut)}</p>
                 </div>
               </div>
             )}
@@ -226,7 +226,7 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
               <div className="flex items-start gap-2.5">
                 <Users className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs text-gray-500">Hóspedes</p>
+                  <p className="text-xs text-gray-500">Hospedes</p>
                   <p className="text-sm text-gray-900 font-medium">{ctx.guests} pessoa(s)</p>
                 </div>
               </div>
@@ -263,14 +263,14 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
             )}
 
             {!ctx.checkIn && !ctx.guests && !ctx.roomType && !ctx.guestEmail && !ctx.specialRequests && (
-              <p className="text-sm text-gray-400 italic">Nenhuma informação coletada ainda</p>
+              <p className="text-sm text-gray-400 italic">Nenhuma informacao coletada ainda</p>
             )}
           </div>
         </div>
 
         {ctx.hitsRoomOptions && ctx.hitsRoomOptions.length > 0 && (
           <div>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">Quartos disponíveis</p>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">Quartos disponiveis</p>
             <div className="space-y-2">
               {ctx.hitsRoomOptions.map((room, i) => (
                 <div key={i} className="p-2.5 bg-gray-50 rounded-lg">
@@ -292,15 +292,15 @@ export function LeadContextPanel({ lead, onBack, onClose, onLeadUpdated }: LeadC
             value={notes}
             onChange={e => setNotes(e.target.value)}
             rows={3}
-            placeholder="Anotações internas (não enviadas ao hóspede)..."
+            placeholder="Anotacoes internas (nao enviadas ao hospede)..."
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none bg-yellow-50/60 placeholder:text-gray-400"
           />
 
           <div className="flex items-center justify-between mt-1.5">
             {notesSaved ? (
-              <span className="text-xs text-green-600 font-medium">✓ Notas salvas</span>
+              <span className="text-xs text-green-600 font-medium">Notas salvas</span>
             ) : (
-              <span className="text-xs text-gray-400">{notes !== (lead.notes || '') ? 'Não salvo' : ''}</span>
+              <span className="text-xs text-gray-400">{notes !== (lead.notes || '') ? 'Nao salvo' : ''}</span>
             )}
             <button
               type="button"
